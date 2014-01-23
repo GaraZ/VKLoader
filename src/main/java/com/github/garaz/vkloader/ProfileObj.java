@@ -15,7 +15,7 @@ import org.dom4j.Element;
  * @author GaraZ
  */
 public class ProfileObj {
-    private Object login;
+    private String login;
     private String token;
     private boolean saveToken;
     
@@ -23,7 +23,7 @@ public class ProfileObj {
         this.login = null;
     }
     
-    public ProfileObj(Object login) {
+    public ProfileObj(String login) {
         this.login = login;
     }
       
@@ -39,7 +39,7 @@ public class ProfileObj {
         return saveToken;
     }
     
-    void setLogin(Object login) {
+    void setLogin(String login) {
         this.login = login;
     }
     
@@ -61,7 +61,7 @@ public class ProfileObj {
                 UnsupportedEncodingException | UnknownHostException | SocketException e) {
             throw new Exception("Profile "
                     .concat(String.valueOf(login))
-                    .concat(" is uncorrect")
+                    .concat(" is incorrect")
                     .concat(" Error: ")
                     .concat(e.getMessage()));
         }
@@ -84,7 +84,7 @@ public class ProfileObj {
                 BadPaddingException | UnknownHostException | SocketException e) {
             throw new Exception("Profile "
                     .concat(String.valueOf(login))
-                    .concat(" is uncorrect")
+                    .concat(" is incorrect")
                     .concat(" Error: ")
                     .concat(e.getMessage()));
         }
@@ -93,24 +93,5 @@ public class ProfileObj {
     @Override
     public String toString() {
         return String.valueOf(login);
-    }
-    
-    @Override
-    public int hashCode() {
-        return login.hashCode();
-    }
-    
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        return this.hashCode() == obj.hashCode();
     }
 }

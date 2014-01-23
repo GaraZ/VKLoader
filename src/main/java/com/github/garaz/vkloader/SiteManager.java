@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ import org.htmlcleaner.TagNode;
  *
  * @author GaraZ
  */
-public class SiteHelper {
+public class SiteManager {
     private static App app;
     private static Map<URI, byte[]> pageMap;
     private static Map<URI, byte[]> imgMap;
@@ -63,33 +64,12 @@ public class SiteHelper {
                 exList.add(e);
             }
         }
-        
-        static boolean imgValidation(URI uri) {
-            if (FileHelper.MASKS_LIST.isEmpty()) return true;
-            for (String string : FileHelper.MASKS_LIST) {
-                if (uri.getPath().endsWith(string)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        static boolean hrefValidation(URI uri) {
-            if (FileHelper.MASKS_LIST.isEmpty()) return true;
-            for (String string : FileHelper.MASKS_LIST) {
-                if (uri.getPath().endsWith(string)) {
-                    return true;
-                }
-            }
-            return false;
-        }
     }
 
-    public SiteHelper(App vkl) {
-        app = vkl;
-        pageMap = new HashMap();
-        imgMap = new HashMap();
-        exList = new ArrayList();
+    public SiteManager() {
+        pageMap = Collections.synchronizedMap(new HashMap());
+        imgMap = Collections.synchronizedMap(new HashMap());
+        exList = Collections.synchronizedList(new ArrayList());
         threadGroup = new ThreadGroup("UK_GROUP");
         dExcLogForm = new ExceptionLoggerForm();
     }
@@ -122,12 +102,22 @@ public class SiteHelper {
         return map;
     }
     
+    static boolean contentValidation(URI uri) {
+        int length = FileManager.MASKS.length;
+        for (int i = 0 ; i < length; i++) {
+            if (uri.getPath().endsWith(FileManager.MASKS[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     static List<URI> getLinks(TagNode root, List<String> maskList) {
         List<URI> list = new ArrayList();
         List<URI> imgList = new ArrayList();
         imgList.addAll(parseTags(root, "img", "src").keySet());
         for (URI uri : imgList) {
-            if (FileHelper.imgValidation(uri)) {
+            if (contentValidation(uri)) {
                 list.add(uri);
             }
         }
@@ -222,17 +212,17 @@ public class SiteHelper {
         return charset;
     }
 
-    void runSitesDownload(CustomList<SiteObj> sitesList) throws IOException, InterruptedException {
+    void runSitesDownload(XmlList<SiteObj> sitesList) throws IOException, InterruptedException {
         dExcLogForm.clean();
         dExcLogForm.setVisible(true);
         PoolingHttpClientConnectionManager manager = new PoolingHttpClientConnectionManager();
         try (CloseableHttpClient httpClient = HttpClients.custom()
                 .setConnectionManager(manager).build()) {
             int size = sitesList.size();
-            GetThread[] threads = new GetThread[size];
+            SiteManager.GetThread[] threads = new SiteManager.GetThread[size];
             for (int i = 0; i < threads.length; i++) {
                 HttpGet httpget = new HttpGet(sitesList.get(i).getURI());
-                threads[i] = new GetThread(threadGroup, String.valueOf(i), httpClient, 
+                threads[i] = new SiteManager.GetThread(threadGroup, String.valueOf(i), httpClient, 
                         httpget, app, sitesList.get(i).getMasks());
             }
             for (int j = 0; j < size; j++) {

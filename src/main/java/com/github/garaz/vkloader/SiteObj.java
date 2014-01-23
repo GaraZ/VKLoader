@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.github.garaz.vkloader;
 
 import java.net.URI;
@@ -13,7 +9,7 @@ import org.dom4j.Node;
 
 /**
  *
- * @author roman.petakh
+ * @author GaraZ
  */
 public class SiteObj {
     private URI uri;
@@ -30,7 +26,7 @@ public class SiteObj {
     }
     
     void setURI(String string) throws URISyntaxException {  
-        uri = SiteHelper.verifyUrl(string);
+        uri = SiteManager.verifyUrl(string);
     }
         
     void setMasks(List list) {
@@ -46,7 +42,7 @@ public class SiteObj {
     }
     
     SiteObj readFromXML(Element locRoot) throws URISyntaxException {
-        uri = SiteHelper.verifyUrl(locRoot.valueOf("@URI"));
+        uri = SiteManager.verifyUrl(locRoot.valueOf("@URI"));
         masks = new ArrayList();
         List<Node> list  = locRoot.selectNodes("Mask");
         for(Node node: list) {

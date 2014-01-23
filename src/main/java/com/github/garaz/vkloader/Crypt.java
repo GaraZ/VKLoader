@@ -24,7 +24,7 @@ public class Crypt {
     private static final String ALGORITHM = "AES"; 
     private static final  String ENCODING = "UTF-8";
 
-    private static SecretKey getKey() throws NoSuchAlgorithmException, 
+    private static SecretKey generateKeyFromMAC() throws NoSuchAlgorithmException, 
             UnknownHostException, SocketException {
         InetAddress ip = InetAddress.getLocalHost();
         NetworkInterface network = NetworkInterface.getByInetAddress(ip);
@@ -51,10 +51,11 @@ public class Crypt {
             NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, 
             IllegalBlockSizeException, BadPaddingException, UnknownHostException, 
             SocketException {
-        if(source == null || source.trim().isEmpty()) 
+        if(source.trim().isEmpty()) {
             return null;
+        }
         byte[] bytes = source.getBytes(ENCODING);
-        bytes = crypter(bytes, Cipher.ENCRYPT_MODE, getKey());
+        bytes = crypter(bytes, Cipher.ENCRYPT_MODE, generateKeyFromMAC());
         return Base64.encodeBase64String(bytes);
     }
 
@@ -62,11 +63,11 @@ public class Crypt {
             NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, 
             BadPaddingException, UnsupportedEncodingException, 
             UnknownHostException, SocketException {
-        if(source == null || source.trim().isEmpty()) {
+        if(source.trim().isEmpty()) {
             return null;
         }
         byte[] bytes = Base64.decodeBase64(source);
-        bytes = crypter(bytes, Cipher.DECRYPT_MODE, getKey());
+        bytes = crypter(bytes, Cipher.DECRYPT_MODE, generateKeyFromMAC());
         return new String(bytes,ENCODING);
     }
 }

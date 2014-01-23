@@ -7,7 +7,7 @@ import org.dom4j.Element;
  *
  * @author GaraZ
  */
-class Timer implements Runnable{
+class TimerManager implements Runnable{
     private String period;
     private String timeError;
     private Thread thrTimer;
@@ -36,7 +36,7 @@ class Timer implements Runnable{
         timeError = String.valueOf(DEF_TIME_ERROR_SECONDS);
     }
     
-    Timer readFromXML(Element locRoot) {
+    TimerManager readFromXML(Element locRoot) {
         period = locRoot.selectSingleNode("Timer/Period").valueOf("text()");
         timeError = locRoot.selectSingleNode("Timer/TimeError").valueOf("text()");
         return this;

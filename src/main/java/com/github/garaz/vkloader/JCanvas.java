@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.github.garaz.vkloader;
 
 import java.awt.Graphics;
@@ -33,7 +29,7 @@ public class JCanvas extends javax.swing.JPanel {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);            
         if(image != null){
-            g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
+            g.drawImage(image, 0, 0, getWidth(), getHeight(), this);
         }
     }
 }

@@ -12,8 +12,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
@@ -34,20 +32,36 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
  * @author GaraZ
  */
 public class MainForm extends javax.swing.JFrame {
-    private final static Logger LOGGER = Logger.getLogger(App.class.getName());
-    private static App app;
+    private static Logger logger = LogManager.getLogger(App.class.getName());
+    private static SitesArrayList sitesList;
+    private static ProfilesArrayList profilesList;
+    private static Timer timer;
+    private static SettingsManager settingsManager;
+    private static FileManager fileManager;
+    private static SiteManager siteManager;
+    private static VkManager vkManager;
     private static SettingsForm settingsForm;
     private static TokenForm tokenForm;
     
-    public MainForm(App vkl) {
-        app = vkl;
-        settingsForm = new SettingsForm(MainForm.this);
+    public MainForm(SitesArrayList sitesList, ProfilesArrayList profilesList, Timer timer, 
+            SettingsManager settingsManager, FileManager fileManager,
+            SiteManager siteManager, VkManager vkManager) {
+        this.sitesList = sitesList;
+        this.profilesList = profilesList;
+        this.timer = timer;
+        this.settingsManager = settingsManager;
+        this.fileManager = fileManager;
+        this.siteManager = siteManager;
+        this.vkManager = vkManager;
+        settingsForm = new SettingsForm(sitesList, timer, settingsManager, this);
         tokenForm = new TokenForm();
         initComponents();
         pack();
@@ -66,13 +80,16 @@ public class MainForm extends javax.swing.JFrame {
             if (hasFocus && selected) {
                 jLabelSuccessful.setVisible(false);
                 try {
-                    showImg(file);
+                    if (file.isFile()) {
+                        jCanvas.setImage(file);
+                        jCanvas.paintComponent(jCanvas.getGraphics());         
+                    }
                 } catch (IOException e) {
                     try {
-                        LOGGER.log(Level.WARNING, null, e);
+                        logger.error(e);
                         initTreeFiles();
                     } catch (IOException ex) {
-                        LOGGER.log(Level.WARNING, null, ex);
+                        logger.error(ex);
                     }
                 }  
             }
@@ -81,36 +98,36 @@ public class MainForm extends javax.swing.JFrame {
     }
     
     class Download  implements Runnable {
-        private final CustomList<SiteObj> sitesList;
+        private final XmlList<SiteObj> sitesList;
         
-        public Download(CustomList<SiteObj> sitesList) {
+        public Download(XmlList<SiteObj> sitesList) {
             this.sitesList = sitesList;
         }
         
         @Override
         public void run() {
             try {
-                app.getSiteHelper().runSitesDownload(sitesList);
-                if (app.getSettingsHelper().getCommon().getIsArhPages()) {
+                siteManager.runSitesDownload(sitesList);
+                if (settingsManager.isArchivePages()) {
                     try {
-                        app.getFileHelper().savePages(app.getSiteHelper().getPages(),
-                                app.getSettingsHelper().getCommon().getArhPagesDir().getAbsolutePath());
+                        fileManager.savePages(siteManager.getPages(),
+                                settingsManager.getArchivePagesDir().getAbsolutePath());
                     } catch (IOException ex) {
-                        LOGGER.log(Level.WARNING, null, ex);
+                        logger.error(ex);
                         JOptionPane.showMessageDialog(MainForm.this, 
                                 "Pages not saving", "Error!", JOptionPane.ERROR_MESSAGE);
                     }
                 }
                 try {
-                    app.getFileHelper().saveImages(app.getSiteHelper().getImages(),
-                            app.getSettingsHelper().getCommon().getContentDir().getAbsolutePath());
+                    fileManager.saveImages(siteManager.getImages(),
+                            settingsManager.getContentDir().getAbsolutePath());
                 } catch (IOException ex) {
-                    LOGGER.log(Level.WARNING, null, ex);
+                    logger.error(ex);
                     JOptionPane.showMessageDialog(MainForm.this, 
                             "Images not saving", "Error!", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (IOException | InterruptedException e) {
-                LOGGER.log(Level.WARNING, null, e);
+                logger.error(e);
                 JOptionPane.showMessageDialog(MainForm.this, 
                         "Downloading error", "Error!", JOptionPane.ERROR_MESSAGE);
             } finally {
@@ -118,17 +135,13 @@ public class MainForm extends javax.swing.JFrame {
                     jToggleButtonDownload.setText("Download");
                     initTreeFiles();
                 } catch (IOException ex) {
-                    LOGGER.log(Level.WARNING, null, ex);
+                    logger.error(ex);
                     JOptionPane.showMessageDialog(MainForm.this, 
                             ex.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
                 }
                 jToggleButtonDownload.setSelected(false);
             }
         }
-    }
-    
-    App getApp() {
-        return app;
     }
        
     JTree getTreeSites() {
@@ -499,7 +512,7 @@ public class MainForm extends javax.swing.JFrame {
         return jButtonUpload;
     }
     
-    private <T extends Object>DefaultMutableTreeNode buildTree(DefaultMutableTreeNode root, List<T> list) {
+    private <T>DefaultMutableTreeNode buildTree(DefaultMutableTreeNode root, List<T> list) {
         if (!list.isEmpty()) {
             try{     
                 DefaultMutableTreeNode treeNodeF;
@@ -508,7 +521,7 @@ public class MainForm extends javax.swing.JFrame {
                     root.add(treeNodeF);
                 }
             } catch(Exception e) {
-                LOGGER.log(Level.WARNING, "Error building a tree.",e);
+                logger.error(e);
                 root.add(new DefaultMutableTreeNode("The error building a tree."));
             }
         }
@@ -525,33 +538,33 @@ public class MainForm extends javax.swing.JFrame {
         File file = null;
         try {
             try {
-                file = app.getSettingsHelper().getCommon().getContentDir();
+                file = settingsManager.getContentDir();
             } catch(IOException e) {
-                file = app.getSettingsHelper().getCommon().DEF_CONTENT_DIR;
+                file = settingsManager.DEF_CONTENT_DIR;
                 throw new IOException("Path of content directory is incorrect. Set default value.");
             }
         } finally {
-            app.getFileHelper().initContent(file);
-            initTree(jTreeSelFiles, file, app.getFileHelper().getHarmonizeSelFiles());
-            initTree(jTreeFiles, file, app.getFileHelper().getContList());
+            fileManager.initContent(file);
+            initTree(jTreeSelFiles, file, fileManager.getHarmonizeSelFiles());
+            initTree(jTreeFiles, file, fileManager.getContList());
         }      
     }    
 
     void initSettings() {
         try {
             try {
-                app.getSettingsHelper().initSettings();
+                settingsManager.initSettings();
             } catch(Exception ex) {
-                LOGGER.log(Level.WARNING, null ,ex);
+                logger.error(ex);
                 JOptionPane.showMessageDialog(this, 
                         ex.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
             }
-            initProfiles(app.getProfilesList());
-            initTree(jTreeSites, "Root", app.getSitesList()); 
+            initProfiles(profilesList);
+            initTree(jTreeSites, "Root", sitesList); 
             initTreeFiles();
         } catch(IOException e) {
-            LOGGER.log(Level.WARNING, null ,e);
-            app.getSettingsHelper().initDefault();
+            logger.error(e);
+            settingsManager.initDefault();
             JOptionPane.showMessageDialog(this, 
                     e.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE
             );
@@ -568,11 +581,11 @@ public class MainForm extends javax.swing.JFrame {
         return treeNode;
     }
     
-    void addSite(JTree jTreeSites, JTextField jTextField, CustomList sitesList) {
+    void addSite(JTree jTreeSites, JTextField jTextField, XmlList sitesList) {
         String text = jTextField.getText().trim();
         if (text.isEmpty()) return;
         try {    
-            URI uri = SiteHelper.verifyUrl(text);
+            URI uri = SiteManager.verifyUrl(text);
             SiteObj siteObj = new SiteObj(uri, new ArrayList());
             sitesList.add(siteObj);
             jTreeSites.setSelectionPath(new TreePath(addTreeNode(jTreeSites, siteObj).getPath()));
@@ -580,7 +593,7 @@ public class MainForm extends javax.swing.JFrame {
             jTextField.requestFocus();
         } catch (URISyntaxException e) {
             jTextField.setText(null);
-            LOGGER.log(Level.WARNING, null, e);
+            logger.error(e);
             JOptionPane.showMessageDialog(null, 
                     "URL is incorrect.", "Error!", JOptionPane.ERROR_MESSAGE
             );
@@ -633,15 +646,15 @@ public class MainForm extends javax.swing.JFrame {
         return list;
     }
     
-    void delSite(JTree jTree, CustomList sitesList) {
+    void delSite(JTree jTree, XmlList sitesList) {
         DefaultMutableTreeNode node = removeTreeNode(jTree);
         if (node != null) {
             sitesList.remove(node.getUserObject());
         }
     }
     
-    void download(CustomList<SiteObj> sitesList, JToggleButton jToggleButton) {
-        app.getSiteHelper().clean();
+    void download(XmlList<SiteObj> sitesList, JToggleButton jToggleButton) {
+        siteManager.clean();
         jToggleButtonDownload.setSelected(true);
         Thread thrDownload = 
             new Thread(new Download(sitesList));
@@ -651,37 +664,37 @@ public class MainForm extends javax.swing.JFrame {
     
     void downloadSites() {
         if (jToggleButtonDownload.isSelected()) {
-            download(app.getSitesList(), jToggleButtonDownload);
+            download(sitesList, jToggleButtonDownload);
             try {
                 initTreeFiles();
             } catch (IOException e) {
-                LOGGER.log(Level.WARNING, null, e);
+                logger.error(e);
                 JOptionPane.showMessageDialog(this, 
                         "Downloading error", "Error!", JOptionPane.ERROR_MESSAGE
                 );
             }
         } else {
             jToggleButtonDownload.setText("Stop...");
-            app.getSiteHelper().stop();
+            siteManager.stop();
             jToggleButtonDownload.setSelected(true);
         }
     }
     
     void treeSitesAction(java.awt.event.ActionEvent evt) {
         if (evt.getSource() == jButtonSiteAdd) {
-            addSite(jTreeSites, jTextFieldSiteAdd, app.getSitesList());
+            addSite(jTreeSites, jTextFieldSiteAdd, sitesList);
         } else if (evt.getSource() == jButtonSiteDel) {
-            delSite(jTreeSites, app.getSitesList());
+            delSite(jTreeSites, sitesList);
         } else if (evt.getSource() == jButtonSiteDelAll) {
             removeAllTreeNode(jTreeSites);
-            app.getSitesList().clear();
+            sitesList.clear();
         } else if (evt.getSource() == jToggleButtonDownload) {
             downloadSites();
         }
         try {
-            app.getSettingsHelper().writeSetting();
+            settingsManager.writeSetting();
         } catch(Exception e) {
-            LOGGER.log(Level.WARNING, null, e);
+            logger.error(e);
             JOptionPane.showMessageDialog(this, 
                     "Settings were not saved. ".concat(e.getMessage()), 
                     "Error!", JOptionPane.ERROR_MESSAGE
@@ -692,17 +705,17 @@ public class MainForm extends javax.swing.JFrame {
     void treeSitesKeyAdepter(java.awt.event.KeyEvent evt) {
         if (evt.getSource() == jTextFieldSiteAdd) {
             if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
-                addSite(jTreeSites, jTextFieldSiteAdd, app.getSitesList());
+                addSite(jTreeSites, jTextFieldSiteAdd, sitesList);
             }
         } else if (evt.getSource() == jTreeSites) {
             if (evt.getKeyCode() == KeyEvent.VK_DELETE) {
-                delSite(jTreeSites, app.getSitesList());
+                delSite(jTreeSites, sitesList);
             }
         }
         try {
-            app.getSettingsHelper().writeSetting();
+            settingsManager.writeSetting();
         } catch(Exception e) {
-            LOGGER.log(Level.WARNING, null, e);
+            logger.error(e);
             JOptionPane.showMessageDialog(this, 
                     "Settings were not saved.", "Error!", 
                     JOptionPane.ERROR_MESSAGE
@@ -742,10 +755,10 @@ public class MainForm extends javax.swing.JFrame {
         DefaultMutableTreeNode selNode = 
                 (DefaultMutableTreeNode) jTreeSelFiles.getLastSelectedPathComponent();
         if (selNode == null) return;
-        if (app.getFileHelper().changeSelListPos((File) selNode.getUserObject(), vector)){
+        if (fileManager.changeSelListPos((File) selNode.getUserObject(), vector)){
             if(!changeNodePos(jTreeSelFiles, vector)) {
                 String text = "Рассинхронизация списка загрузок.";
-                LOGGER.log(Level.WARNING, text);
+                logger.error(text);
                 JOptionPane.showMessageDialog(this, 
                     text, "Error!", JOptionPane.ERROR_MESSAGE);
             }
@@ -757,29 +770,56 @@ public class MainForm extends javax.swing.JFrame {
         list = removeAllTreeNode(jTreeSelFiles);
         int size = list.size();
         for (int i = 0; i < size; i++) {
-            app.getFileHelper().unselectFile((File) list.get(i));
+            fileManager.unselectFile((File) list.get(i));
             addTreeNode(jTreeFiles, list.get(i));
         }
     }
     
-    void delAllFile() {
-        removeAllTreeNode(jTreeFiles);
-        app.getFileHelper().removeAllFiles();
+    void deleteFile(File file) {
+        try {
+            fileManager.removeFile(file);
+        } catch(IOException ex) {
+            logger.error(ex);
+            JOptionPane.showMessageDialog(this, 
+                    ex.getMessage(), "Error!", 
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    void deleteAllFile() {
+        try {
+            removeAllTreeNode(jTreeFiles);            
+            fileManager.removeAllFiles();
+        } catch(IOException e) {
+            logger.error(e);
+            JOptionPane.showMessageDialog(this, 
+                    e.getMessage(), "Error!", 
+                    JOptionPane.ERROR_MESSAGE);
+            try {
+                initTreeFiles();
+            } catch(IOException ex) {
+                logger.error(ex);
+                JOptionPane.showMessageDialog(this, 
+                        ex.getMessage(), "Error!", 
+                        JOptionPane.ERROR_MESSAGE);
+            }
+            
+        }
     }
     
     void treeFilesAction(java.awt.event.ActionEvent evt) {
         if (evt.getSource() == jButtonFileDel) {
-            app.getFileHelper().removeFile(
+            deleteFile(
                     (File) removeTreeNode(jTreeFiles).getUserObject()
             );
         } else if (evt.getSource() == jButtonFileDelAll) {
-            delAllFile();
+            deleteAllFile();
         } else if (evt.getSource() == jButtonUnselect) {
-            app.getFileHelper().unselectFile(
+            fileManager.unselectFile(
                     selectFile(jTreeSelFiles, jTreeFiles)
             );
         } else if (evt.getSource() == jButtonSelect) {
-            app.getFileHelper().selectFile(
+            fileManager.selectFile(
                     selectFile(jTreeFiles, jTreeSelFiles)
             );
         } else if (evt.getSource() == jButtonSelUp) {
@@ -794,29 +834,22 @@ public class MainForm extends javax.swing.JFrame {
     void treeFilesKeyAdepter(java.awt.event.KeyEvent evt) {
         if (evt.getSource() == jTreeFiles) {
             if (evt.getKeyCode() == KeyEvent.VK_SPACE) {
-                app.getFileHelper().selectFile(
+                fileManager.selectFile(
                     selectFile(jTreeFiles, jTreeSelFiles));
             } else if (evt.getKeyCode() == KeyEvent.VK_DELETE) {
-                app.getFileHelper().removeFile(
+                deleteFile(
                     (File) removeTreeNode(jTreeFiles).getUserObject()
                 );
             }
         } else if (evt.getSource() == jTreeSelFiles) {
             if (evt.getKeyCode() == KeyEvent.VK_SPACE) {
-                app.getFileHelper().unselectFile(
+                fileManager.unselectFile(
                     selectFile(jTreeSelFiles, jTreeFiles));
             } else if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
                 if (jButtonUpload.isEnabled()) {
                     uploadContent();
                 }
             }
-        }
-    }
-    
-    void showImg(File file) throws IOException {
-        if (file.isFile()) {
-            jCanvas.setImage(file);
-            jCanvas.paintComponent(jCanvas.getGraphics());         
         }
     }
     
@@ -827,22 +860,22 @@ public class MainForm extends javax.swing.JFrame {
         if (treeNode == null) return;
             try {
                 File file = (File) treeNode.getUserObject();
-                String groupId = app.getSettingsHelper().getCommon().getGroupId();
-                String message = app.getSettingsHelper().getCommon().getComments();
-                if (app.getVkHelper().upload(file, groupId, message) != null) {
+                String groupId = settingsManager.getGroupId();
+                String message = settingsManager.getComments();
+                if (vkManager.upload(file, groupId, message) != null) {
                     jLabelSuccessful.setVisible(true);
-                    if (app.getSettingsHelper().getCommon().getIsArhContent()) {
-                        app.getFileHelper().moveToArchive(
-                                app.getSettingsHelper().getCommon().getArhContentDir(),
+                    if (settingsManager.isArchiveContent()) {
+                        fileManager.moveToArchive(
+                                settingsManager.getArchiveContentDir(),
                                 file
                         );
                     } else {
-                        app.getFileHelper().removeFile(file);
+                        deleteFile(file);
                     }
                     removeTreeNode(jTreeSelFiles);
                 }
             } catch(VkAPIException ex) {
-                LOGGER.log(Level.WARNING, null, ex);
+                logger.error(ex);
                 jButtonUpload.setEnabled(false);
                 String text = new StringBuilder()
                         .append(ex.getMessage())
@@ -856,7 +889,7 @@ public class MainForm extends javax.swing.JFrame {
                 JOptionPane.showMessageDialog(this, text, "Error!",
                     JOptionPane.WARNING_MESSAGE);
             } catch(IOException | URISyntaxException e) {
-                LOGGER.log(Level.WARNING, null, e);
+                logger.error(e);
                 jButtonUpload.setEnabled(false);
                 jToggleButtonConnect.setSelected(false);
                 JOptionPane.showMessageDialog(this, 
@@ -865,9 +898,9 @@ public class MainForm extends javax.swing.JFrame {
     }  
     
     void addProfile(ProfileObj profile) {
-        if (!app.getProfilesList().contains(profile)) {
+        if (!profilesList.contains(profile)) {
             jComboBoxLogin.addItem(profile);
-            app.getProfilesList().add(profile);
+            profilesList.add(profile);
         }
         jComboBoxLogin.setSelectedItem(profile);
     }
@@ -881,7 +914,7 @@ public class MainForm extends javax.swing.JFrame {
         if (obj.getClass() == ProfileObj.class) {
             profile = (ProfileObj) obj;
         } else {
-            profile = new ProfileObj(obj);
+            profile = new ProfileObj(String.valueOf(obj));
         }
         return profile;
     }
@@ -901,7 +934,7 @@ public class MainForm extends javax.swing.JFrame {
                     addProfile(profile);
                 }
                 profile.setSaveToken(jCheckBoxSaveToken.isSelected());
-                app.getVkHelper().setToken(profile.getToken());  
+                vkManager.setToken(profile.getToken());  
                 jButtonUpload.setEnabled(true);
             } else {
                 jComboBoxLogin.setEnabled(true);
@@ -911,7 +944,7 @@ public class MainForm extends javax.swing.JFrame {
             jComboBoxLogin.setEnabled(true);
             jToggleButtonConnect.setSelected(false);
             jButtonUpload.setEnabled(false);
-            LOGGER.log(Level.WARNING, null, e);
+            logger.error(e);
             JOptionPane.showMessageDialog(this, 
                    "Connection error. ".concat(e.getMessage()), "Error!", 
                    JOptionPane.ERROR_MESSAGE
@@ -923,7 +956,7 @@ public class MainForm extends javax.swing.JFrame {
         Object obj = jComboBoxLogin.getSelectedItem();
         if (obj != null) {
             jComboBoxLogin.removeItem(obj);
-            app.getProfilesList().remove(obj);
+            profilesList.remove(obj);
         }
     }
     
@@ -940,9 +973,9 @@ public class MainForm extends javax.swing.JFrame {
             runTimer();
         }
         try {
-            app.getSettingsHelper().writeSetting();
+            settingsManager.writeSetting();
         } catch(Exception e) {
-            LOGGER.log(Level.WARNING, null, e);
+            logger.error(e);
             JOptionPane.showMessageDialog(this, 
                    "Profiles were not saved. ".concat(e.getMessage()), "Error!",
                    JOptionPane.ERROR_MESSAGE
@@ -952,9 +985,9 @@ public class MainForm extends javax.swing.JFrame {
     
     void runTimer() {
         if (jToggleButtonTimer.isSelected()) {
-            app.getSettingsHelper().getTimer().start(this);
+            timer.start(this);
         } else {
-            app.getSettingsHelper().getTimer().stop();
+            timer.stop();
         }
     }
     

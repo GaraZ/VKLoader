@@ -11,8 +11,6 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -30,15 +28,20 @@ import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
  * @author Garaz
  */
 public class SettingsForm extends javax.swing.JDialog {
-    private final static Logger LOGGER = Logger.getLogger(App.class.getName());
+    private static Logger logger = LogManager.getLogger(App.class.getName());
+    private static SettingsManager settingsManager;
+    private static Timer timer;
+    private static SitesArrayList sitesList;
     private static MainForm mainForm;
-    private CustomList siteList;
+    private XmlList siteList;
     
     private class SitesTreeCellRenderer extends DefaultTreeCellRenderer {
         @Override
@@ -87,8 +90,12 @@ public class SettingsForm extends javax.swing.JDialog {
         }
     }
     
-    public SettingsForm(MainForm form) {
-        mainForm = form;
+    public SettingsForm(SitesArrayList sitesList, Timer timer, 
+            SettingsManager settingsManager, MainForm mainForm) {
+        this.timer = timer;
+        this.sitesList = sitesList;
+        this.settingsManager = settingsManager;
+        this.mainForm = mainForm;
         initComponents();
         pack();
         setLocationRelativeTo(null);
@@ -392,60 +399,51 @@ public class SettingsForm extends javax.swing.JDialog {
     }
     
     void initCommon() throws IOException {
-        try {
-            jTextFieldGroupId.setText(mainForm.getApp().getSettingsHelper().getCommon().getGroupId());
-            jTextAreaComments.setText(mainForm.getApp().getSettingsHelper().getCommon().getComments());
-            jTextFieldCont.setText(mainForm.getApp().getSettingsHelper().getCommon().getContentDir().getAbsolutePath());
-            jTextFieldArhCont.setText(mainForm.getApp().getSettingsHelper().getCommon().getArhContentDir().getAbsolutePath());
-            jTextFieldArhSite.setText(mainForm.getApp().getSettingsHelper().getCommon().getArhPagesDir().getAbsolutePath());
-            jCheckBoxArhCont.setSelected(mainForm.getApp().getSettingsHelper().getCommon().getIsArhContent());
-            jCheckBoxArhSite.setSelected(mainForm.getApp().getSettingsHelper().getCommon().getIsArhPages());
-        } catch(IOException e) {
-            jTextFieldCont.setText(mainForm.getApp().getSettingsHelper().getCommon().DEF_CONTENT_DIR.getAbsolutePath());
-            jTextFieldArhCont.setText(mainForm.getApp().getSettingsHelper().getCommon().DEF_ARH_CONTENT_DIR.getAbsolutePath());
-            jTextFieldArhSite.setText(mainForm.getApp().getSettingsHelper().getCommon().DEF_ARH_PAGES_DIR.getAbsolutePath());
-            jCheckBoxArhCont.setSelected(false);
-            jCheckBoxArhSite.setSelected(false);
-            throw e;
-        }
+        jTextFieldGroupId.setText(settingsManager.getGroupId());
+        jTextAreaComments.setText(settingsManager.getComments());
+        jTextFieldCont.setText(settingsManager.getContentDir().getAbsolutePath());
+        jTextFieldArhCont.setText(settingsManager.getArchiveContentDir().getAbsolutePath());
+        jTextFieldArhSite.setText(settingsManager.getArchivePagesDir().getAbsolutePath());
+        jCheckBoxArhCont.setSelected(settingsManager.isArchiveContent());
+        jCheckBoxArhSite.setSelected(settingsManager.isArchivePages());
     }
     
-    void saveCommon() {
-        mainForm.getApp().getSettingsHelper().getCommon().setGroupId(jTextFieldGroupId.getText());
-        mainForm.getApp().getSettingsHelper().getCommon().setComments(jTextAreaComments.getText());
-        mainForm.getApp().getSettingsHelper().getCommon().setContentDir(jTextFieldCont.getText());
-        mainForm.getApp().getSettingsHelper().getCommon().setArhContentDir(jTextFieldArhCont.getText());
-        mainForm.getApp().getSettingsHelper().getCommon().setArhPagesDir(jTextFieldArhSite.getText());
-        mainForm.getApp().getSettingsHelper().getCommon().setArhContent(jCheckBoxArhCont.isSelected());
-        mainForm.getApp().getSettingsHelper().getCommon().setArhPages(jCheckBoxArhSite.isSelected());
+    void saveCommon() throws IOException {
+        settingsManager.setGroupId(jTextFieldGroupId.getText());
+        settingsManager.setComments(jTextAreaComments.getText());
+        settingsManager.setContentDir(new File(jTextFieldCont.getText()));
+        settingsManager.setArchiveContentDir(new File(jTextFieldArhCont.getText()));
+        settingsManager.setArchivePagesDir(new File(jTextFieldArhSite.getText()));
+        settingsManager.setArchiveContent(jCheckBoxArhCont.isSelected());
+        settingsManager.setArchivePages(jCheckBoxArhSite.isSelected());
     }
     
     void initTimer() throws IOException {
         try {
-            jSliderPeriod.setValue(mainForm.getApp().getSettingsHelper().getTimer().getPeriod()/60);
-            jSliderTimeError.setValue(mainForm.getApp().getSettingsHelper().getTimer().getTimeError()/60);
+            jSliderPeriod.setValue(timer.getPeriod()/60);
+            jSliderTimeError.setValue(timer.getTimeError()/60);
         } catch(NumberFormatException e) {
-            jSliderPeriod.setValue(mainForm.getApp().getSettingsHelper().getTimer().DEF_PERIOD_SECONDS);
-            jSliderTimeError.setValue(mainForm.getApp().getSettingsHelper().getTimer().DEF_TIME_ERROR_SECONDS);
-            throw new IOException("Timer is uncorrect.");
+            jSliderPeriod.setValue(timer.DEF_PERIOD_SECONDS);
+            jSliderTimeError.setValue(timer.DEF_TIME_ERROR_SECONDS);
+            throw new IOException("Timer is incorrect.");
         }
     }
     
     void saveTimer() {
-        mainForm.getApp().getSettingsHelper().getTimer().setPeriod(jSliderPeriod.getValue() * 60);
-        mainForm.getApp().getSettingsHelper().getTimer().setTimeError(jSliderTimeError.getValue() * 60);
+        timer.setPeriod(jSliderPeriod.getValue() * 60);
+        timer.setTimeError(jSliderTimeError.getValue() * 60);
     }
     
     void initSites() {
         siteList = new SitesArrayList();
-        siteList.addAll(mainForm.getApp().getSettingsHelper().getSitesList());
+        siteList.addAll(sitesList);
         mainForm.initTree(jTreeSites, "Root", siteList);
         mainForm.initTree(jTreeSitesMasks, "Root", new ArrayList());
     }
     
     void saveSites() {
-        mainForm.getApp().getSettingsHelper().getSitesList().clear();
-        mainForm.getApp().getSettingsHelper().getSitesList().addAll(siteList);
+        sitesList.clear();
+        sitesList.addAll(siteList);
     }
     
     void initMasks(SiteObj siteObj) {
@@ -458,27 +456,27 @@ public class SettingsForm extends javax.swing.JDialog {
             initCommon();
             initTimer();
         } catch(IOException e) {
-            LOGGER.log(Level.WARNING,null,e);
+            logger.error(e);
             JOptionPane.showMessageDialog(this, 
                 e.getMessage().concat(" Set default settings."), "Error!", JOptionPane.ERROR_MESSAGE);
         }
         try {
             initTimer();
         } catch(IOException e) {
-            LOGGER.log(Level.WARNING,null,e);
+            logger.error(e);
             JOptionPane.showMessageDialog(this, 
                 e.getMessage().concat(" Set default settings."), "Error!", JOptionPane.ERROR_MESSAGE);
         }
     }
     
     void saveSettings() {
-        saveCommon();
         saveTimer();
         saveSites();
         try {
-            mainForm.getApp().getSettingsHelper().writeSetting();
+            saveCommon();
+            settingsManager.writeSetting();
         } catch(Exception e) {
-            LOGGER.log(Level.WARNING,null,e);
+            logger.error(e);
             JOptionPane.showMessageDialog(this, 
                 e.getMessage().concat("Settings were not saved."), "Error!", JOptionPane.ERROR_MESSAGE);
         }

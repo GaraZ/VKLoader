@@ -10,7 +10,7 @@ import org.dom4j.Node;
  *
  * @author GaraZ
  */
-public class SitesArrayList<E extends SiteObj> extends ArrayList<E> implements CustomList<E> {
+public class SitesArrayList<E extends SiteObj> extends ArrayList<E> implements XmlList<E> {
     
     @Override
     public void writeToXML(Element locRoot) {

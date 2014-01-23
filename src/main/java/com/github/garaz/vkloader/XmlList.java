@@ -7,7 +7,7 @@ import org.dom4j.Element;
  *
  * @author GaraZ
  */
-public interface CustomList<E extends Object>  extends List<E> {
+public interface XmlList<E>  extends List<E> {
     void writeToXML(Element locRoot) throws Exception;
-    CustomList readFromXML(Element locRoot) throws Exception;
+    XmlList readFromXML(Element locRoot) throws Exception;
 }

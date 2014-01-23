@@ -2,6 +2,8 @@ package com.github.garaz.vkloader;
 
 import java.io.*;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -11,12 +13,12 @@ import java.util.Map.Entry;
  *
  * @author GaraZ
  */
-public class FileHelper {
-    static final List<String> MASKS_LIST = new ArrayList(Arrays.asList(".jpg", ".png", ".jpeg", ".bmp"));
+public class FileManager {
+    static final String[] MASKS = {".jpg", ".png", ".jpeg", ".bmp"};
     private final List<File> filesList;
     private final List<File> selFilesList;
 
-    public FileHelper() {
+    public FileManager() {
         filesList = new ArrayList();
         selFilesList = new ArrayList();
     }
@@ -26,12 +28,11 @@ public class FileHelper {
         if (dir.isDirectory()) {
             String[] arrDir = dir.list();
             for (String string : arrDir) {
-                File file = new File(dir.getAbsolutePath()
-                        .concat(File.separator)
-                        .concat(string));  
+                File file = new File(dir.getAbsolutePath(), string);  
                 if (file.isFile()) {
-                    for(String filter: MASKS_LIST) {
-                        if (file.toString().toLowerCase().endsWith(filter)) {
+                    int length = MASKS.length;
+                    for (int i = 0; i < length; i++) {                     
+                        if (file.toString().toLowerCase().endsWith(MASKS[i])) {
                             filesList.add(file);
                             break;
                         }
@@ -42,20 +43,20 @@ public class FileHelper {
     }
     
     List<File> getHarmonizeSelFiles() {
-        ListIterator iterSel = selFilesList.listIterator();
-        ListIterator iter = filesList.listIterator();
-        boolean fl = false;
+        ListIterator<File> iterSel = selFilesList.listIterator();
+        ListIterator<File> iter = filesList.listIterator();
+        boolean match = false;
         while(iterSel.hasNext()) {
-            Object objSel = iterSel.next();
+            File fileSel = iterSel.next();
             while(iter.hasNext()) {
-                fl = false;
-                Object obj = iter.next();
-                if (objSel.equals(obj)) {
-                    fl =true;
+                match = false;
+                File file = iter.next();
+                if (fileSel.equals(file)) {
+                    match =true;
                     break;
                 }
             }
-            if (fl == true) {
+            if (match) {
                 iter.remove();
             } else {
                 iterSel.remove();
@@ -68,16 +69,35 @@ public class FileHelper {
         return filesList;
     }
     
-    void removeFile(File file) {
+    void removeFile(File file) throws NoSuchFileException, IOException{
+        try {
+            Files.delete(file.toPath());
+        } catch(NoSuchFileException e) {
+            filesList.remove(file);
+            throw new NoSuchFileException(file.getName().concat(" not found. "));
+        }
         filesList.remove(file);
-        file.delete();
     }
     
-    void removeAllFiles() {
-        for (File file: filesList) {
-            file.delete();
+    void removeAllFiles() throws IOException {
+        ListIterator<File> iter = filesList.listIterator();
+        StringBuilder errMessages = new StringBuilder();
+        while(iter.hasNext()) {
+            File file = iter.next();
+            try {
+                Files.delete(file.toPath());
+                iter.remove();
+            } catch(NoSuchFileException e) {
+                iter.remove();
+                errMessages.append(e.getMessage()).append(" not found. ");
+            } catch(IOException ex) {
+                errMessages.append(ex.getMessage()).append(" ");
+            }
         }
-        filesList.clear();
+        String errMessagesString = errMessages.toString();
+        if (!errMessagesString.isEmpty()) {
+            throw new IOException(errMessagesString);
+        }
     }
     
     void selectFile(File file) {
@@ -100,26 +120,15 @@ public class FileHelper {
         out.flush();
     }
     
-    synchronized void write(String fileName, byte[] bytes) throws FileNotFoundException, IOException {
-        try (FileOutputStream fos = new FileOutputStream(fileName)) {
+    synchronized void write(File file, byte[] bytes) throws FileNotFoundException, IOException {
+        try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(bytes);
         }
     }
     
-    static boolean imgValidation(URI uri) {
-        if (MASKS_LIST.isEmpty()) return true;
-        for (String string : MASKS_LIST) {
-            if (uri.getPath().endsWith(string)) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
     void moveToArchive(File archDir, File source) {
-        GregorianCalendar calendar = new GregorianCalendar();
         DateFormat df = new SimpleDateFormat("yyyyMMdd");
-        String dirNow = df.format(calendar.getInstance().getTime());
+        String dirNow = df.format(System.currentTimeMillis());
         File customDir = archDir.toPath().resolve(dirNow).toFile();
         customDir.mkdirs();
         source.renameTo(customDir.toPath().resolve(source.getName()).toFile());
@@ -132,34 +141,32 @@ public class FileHelper {
             if (i > 0) {
                 extension = entry.getKey().toString().substring(i);
             }
-            StringBuilder title = new StringBuilder();
-            title.append(dir)
-                .append(File.separator)
-                .append(String.valueOf(Math.abs(entry.getKey().hashCode())))
-                .append(extension);
-            write(title.toString(), entry.getValue());
+            File file = new File(dir, 
+                    String.valueOf(Math.abs(entry.getKey().hashCode())).concat(extension));
+            write(file, entry.getValue());
         }
     }
     
     void savePages(Map<URI, byte[]> siteMap, String dir) throws IOException {
         for (Entry<URI, byte[]> entry :siteMap.entrySet()) {
-            StringBuilder title = new StringBuilder();
-            title.append(dir)
-                .append(File.separator)
-                .append(entry.getKey().getHost())
-                .append(entry.getKey().getPath().replaceAll("/", "_"))
-                .append(".txt");
-            write(title.toString(), entry.getValue());
+            File file = new File(dir, 
+                    entry.getKey().getHost()
+                    .concat(entry.getKey().getPath().replaceAll("/", "_"))
+                    .concat(".txt")
+                    );
+            write(file, entry.getValue());
         }
     }
     
     boolean changeSelListPos(File selFile, int lvl) {
         if (selFile == null) return false;
-        if (selFilesList.size()>1) {
+        
+        if (selFilesList.size() > 1) {
             int actLvlList = selFilesList.indexOf(selFile);
-            if((actLvlList+lvl >= 0) && (actLvlList+lvl <= selFilesList.size()-1)){
-                File file = selFilesList.get(actLvlList+lvl);
-                selFilesList.set(actLvlList+lvl, selFile);
+            if((actLvlList + lvl >= 0) && 
+                    (actLvlList + lvl <= selFilesList.size() - 1)) {
+                File file = selFilesList.get(actLvlList + lvl);
+                selFilesList.set(actLvlList + lvl, selFile);
                 selFilesList.set(actLvlList, file);
                 return true;
             }

@@ -9,7 +9,7 @@ import org.dom4j.Node;
  *
  * @author GaraZ
  */
-public class ProfilesArrayList <E extends ProfileObj> extends ArrayList<E> implements CustomList<E> {
+public class ProfilesArrayList <E extends ProfileObj> extends ArrayList<E> implements XmlList<E> {
     
     @Override
     public void writeToXML(Element locRoot) throws Exception {
