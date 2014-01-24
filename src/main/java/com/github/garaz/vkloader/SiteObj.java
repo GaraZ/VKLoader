@@ -25,19 +25,19 @@ public class SiteObj {
         this.masks = masks;
     }
     
-    void setURI(String string) throws URISyntaxException {  
+    public void setURI(String string) throws URISyntaxException {  
         uri = SiteManager.verifyUrl(string);
     }
         
-    void setMasks(List list) {
+    public void setMasks(List list) {
         masks = list;
     }
         
-    URI getURI() {
+    public URI getURI() {
         return uri;
     }
         
-    List<String> getMasks() {
+    public List<String> getMasks() {
         return masks;
     }
     

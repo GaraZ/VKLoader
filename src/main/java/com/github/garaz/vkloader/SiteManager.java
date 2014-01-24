@@ -74,11 +74,11 @@ public class SiteManager {
         dExcLogForm = new ExceptionLoggerForm();
     }
     
-    Map<URI, byte[]> getPages() {
+    public Map<URI, byte[]> getPages() {
         return pageMap;
     }
     
-    Map<URI, byte[]> getImages() {
+    public Map<URI, byte[]> getImages() {
         return imgMap;
     }
     

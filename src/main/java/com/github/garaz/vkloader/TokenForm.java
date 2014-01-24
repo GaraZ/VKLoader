@@ -27,7 +27,7 @@ public final class TokenForm extends javax.swing.JDialog {
     
     static final String TOKEN_ADDRESS  = new StringBuilder()
         .append("https://oauth.vk.com/authorize?")
-        .append("client_id=").append(VkHelper.APP_ID)
+        .append("client_id=").append(VkManager.APP_ID)
         .append("&redirect_uri=https://oauth.vk.com/blank.html")
         .append("&display=page")
         .append("&scope=wall,photos")

@@ -38,7 +38,7 @@ import org.apache.logging.log4j.Logger;
 public class SettingsForm extends javax.swing.JDialog {
     private static Logger logger = LogManager.getLogger(App.class.getName());
     private static SettingsManager settingsManager;
-    private static Timer timer;
+    private static TimerManager timerManager;
     private static SitesArrayList sitesList;
     private static MainForm mainForm;
     private XmlList siteList;
@@ -90,9 +90,9 @@ public class SettingsForm extends javax.swing.JDialog {
         }
     }
     
-    public SettingsForm(SitesArrayList sitesList, Timer timer, 
+    public SettingsForm(SitesArrayList sitesList, TimerManager timerManager, 
             SettingsManager settingsManager, MainForm mainForm) {
-        this.timer = timer;
+        this.timerManager = timerManager;
         this.sitesList = sitesList;
         this.settingsManager = settingsManager;
         this.mainForm = mainForm;
@@ -420,18 +420,18 @@ public class SettingsForm extends javax.swing.JDialog {
     
     void initTimer() throws IOException {
         try {
-            jSliderPeriod.setValue(timer.getPeriod()/60);
-            jSliderTimeError.setValue(timer.getTimeError()/60);
+            jSliderPeriod.setValue(timerManager.getPeriod()/60);
+            jSliderTimeError.setValue(timerManager.getTimeError()/60);
         } catch(NumberFormatException e) {
-            jSliderPeriod.setValue(timer.DEF_PERIOD_SECONDS);
-            jSliderTimeError.setValue(timer.DEF_TIME_ERROR_SECONDS);
+            jSliderPeriod.setValue(timerManager.DEF_PERIOD_SECONDS);
+            jSliderTimeError.setValue(timerManager.DEF_TIME_ERROR_SECONDS);
             throw new IOException("Timer is incorrect.");
         }
     }
     
     void saveTimer() {
-        timer.setPeriod(jSliderPeriod.getValue() * 60);
-        timer.setTimeError(jSliderTimeError.getValue() * 60);
+        timerManager.setPeriod(jSliderPeriod.getValue() * 60);
+        timerManager.setTimeError(jSliderTimeError.getValue() * 60);
     }
     
     void initSites() {

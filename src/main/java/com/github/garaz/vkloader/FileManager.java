@@ -25,24 +25,23 @@ public class FileManager {
     
     void initContent(File dir) {
         filesList.clear();
-        if (dir.isDirectory()) {
-            String[] arrDir = dir.list();
-            for (String string : arrDir) {
-                File file = new File(dir.getAbsolutePath(), string);  
-                if (file.isFile()) {
-                    int length = MASKS.length;
-                    for (int i = 0; i < length; i++) {                     
-                        if (file.toString().toLowerCase().endsWith(MASKS[i])) {
-                            filesList.add(file);
-                            break;
-                        }
+        File[] arrDir = dir.listFiles();
+        if (arrDir == null) return;
+        for (File file : arrDir) { 
+            if (file.isFile()) {
+                int length = MASKS.length;
+                String name = file.getName().toLowerCase();
+                for (int i = 0; i < length; i++) {                     
+                    if (name.endsWith(MASKS[i])) {
+                        filesList.add(file);
+                        break;
                     }
                 }
             }
         }
     }
     
-    List<File> getHarmonizeSelFiles() {
+    public List<File> getHarmonizeSelFiles() {
         ListIterator<File> iterSel = selFilesList.listIterator();
         ListIterator<File> iter = filesList.listIterator();
         boolean match = false;
@@ -65,7 +64,7 @@ public class FileManager {
         return selFilesList;
     }
     
-    List<File> getContList() {
+    public List<File> getContList() {
         return filesList;
     }
     
@@ -110,14 +109,6 @@ public class FileManager {
         if (file == null) return;
         filesList.add(file);
         selFilesList.remove(file);
-    }
-    
-    static synchronized <N extends InputStream, T extends OutputStream> void streamCopy(N  in, T out) throws IOException {
-        int bytes;
-        while ((bytes = in.read()) != -1){
-            out.write(bytes);
-        }
-        out.flush();
     }
     
     synchronized void write(File file, byte[] bytes) throws FileNotFoundException, IOException {

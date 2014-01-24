@@ -27,28 +27,28 @@ public class ProfileObj {
         this.login = login;
     }
       
-    Object getLogin() {
+    public String getLogin() {
         return login;
     }
     
-    String getToken() {
+    public String getToken() {
         return token;
     }
     
-    boolean getSaveToken() {
+    public boolean getSaveToken() {
         return saveToken;
     }
     
-    void setLogin(String login) {
+    public void setLogin(String login) {
         this.login = login;
     }
     
-    void setToken(String token, boolean saveToken) {
+    public void setToken(String token, boolean saveToken) {
         this.token = token;
         this.saveToken = saveToken;
     }
     
-    void setSaveToken(boolean saveToken) {
+    public void setSaveToken(boolean saveToken) {
         this.saveToken = saveToken;
     }
     

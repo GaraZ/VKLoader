@@ -15,19 +15,19 @@ class TimerManager implements Runnable{
     final int DEF_PERIOD_SECONDS = 600;
     final int DEF_TIME_ERROR_SECONDS = 0;
     
-    void setPeriod(int seconds) {
+    public void setPeriod(int seconds) {
         period = String.valueOf(seconds);
     }
     
-    void setTimeError(int seconds) {
+    public void setTimeError(int seconds) {
         timeError = String.valueOf(seconds);
     }
     
-    int getPeriod() throws NumberFormatException {
+    public int getPeriod() throws NumberFormatException {
         return Integer.parseInt(period);
     }
     
-    int getTimeError() throws NumberFormatException {
+    public int getTimeError() throws NumberFormatException {
         return Integer.parseInt(timeError);
     }
         
@@ -48,13 +48,12 @@ class TimerManager implements Runnable{
         element.addElement("TimeError").setText(timeError);
     }
     
-    void setForm(MainForm mainForm) {
+    public void setForm(MainForm mainForm) {
         this.mainForm = mainForm;
     }
 
     @Override
     public void run() {
-        int i = 0;
         int per = Integer.parseInt(period);
         int err = Integer.parseInt(timeError);
         Random generator = new Random();
@@ -65,7 +64,7 @@ class TimerManager implements Runnable{
             a = per;
         }
         try {
-            do {
+            for(int i = 0; ; i++) {
                 if (i >= a) {
                     if (err > 0) {
                         a = per + err - generator.nextInt(err * 2);
@@ -85,10 +84,10 @@ class TimerManager implements Runnable{
                 mainForm.getTimeLabel().setText(text);
                 Thread.sleep(1000);
                 i++;
-            } while(true);           
+            }          
         } catch (InterruptedException e) {
             mainForm.getTimeLabel().setText("0");
-            Thread.currentThread().isInterrupted();
+            Thread.currentThread().interrupt();
         }
     }
     

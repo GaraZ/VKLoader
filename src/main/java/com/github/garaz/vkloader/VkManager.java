@@ -33,11 +33,11 @@ public class VkManager {
     //static final String GROUP_ID = "52042075";
     private String token;
     
-    String getToken() {
+    public String getToken() {
         return token;
     }
     
-    void setToken(String token) {
+    public void setToken(String token) {
         this.token = token;
     }
     

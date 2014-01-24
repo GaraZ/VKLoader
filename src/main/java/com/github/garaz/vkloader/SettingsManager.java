@@ -25,7 +25,7 @@ public class SettingsManager {
     final static File DEF_ARCHIVE_PAGES_DIR = new File(System.getProperty("user.dir"), "ArhSites");
     private static File settinsFile;
     private static Common common;
-    private static Timer timer;
+    private static TimerManager timerManager;
     private static XmlList<SiteObj> sites;
     private static XmlList<ProfileObj> profiles;
     
@@ -77,24 +77,24 @@ public class SettingsManager {
         }    
     }
     
-    public SettingsManager(File file, Timer timer,
+    public SettingsManager(File file, TimerManager timerManager,
             SitesArrayList sites, ProfilesArrayList profiles) {
         settinsFile = file;       
         common = new Common();
-        this.timer = timer;
+        this.timerManager = timerManager;
         this.sites = sites;
         this.profiles = profiles;
     }
     
-    void setGroupId(String id) {
+    public void setGroupId(String id) {
         common.groupId = id;
     }
     
-    void setComments(String text) {
+    public void setComments(String text) {
         common.comments = text;
     }
     
-    void setContentDir(File file) throws IOException {
+    public void setContentDir(File file) throws IOException {
         if(file.isDirectory()) {
             common.contentDir = file;
         } else {
@@ -102,11 +102,11 @@ public class SettingsManager {
         }        
     }
         
-    void setArchiveContent(boolean bool) {
+    public void setArchiveContent(boolean bool) {
         common.isArchiveContent = bool;
     }
         
-    void setArchiveContentDir(File file) throws IOException {
+    public void setArchiveContentDir(File file) throws IOException {
         if(file.isDirectory()) {
             common.archiveContentDir = file;
         } else {
@@ -114,11 +114,11 @@ public class SettingsManager {
         }    
     }
         
-    void setArchivePages(boolean bool) {
+    public void setArchivePages(boolean bool) {
         common.isArchivePages = bool;
     }
         
-    void setArchivePagesDir(File file) throws IOException {
+    public void setArchivePagesDir(File file) throws IOException {
         if(file.isDirectory()) {
             common.archivePagesDir = file;
         } else {
@@ -126,37 +126,37 @@ public class SettingsManager {
         }
     }
     
-    String getGroupId() {
+    public String getGroupId() {
         return common.groupId;
     }
     
-    String getComments() {
+    public String getComments() {
         return common.comments;
     }
         
-    File getContentDir() throws IOException {
+    public File getContentDir() throws IOException {
         return common.contentDir;
     }
         
-    boolean isArchiveContent() {
+    public boolean isArchiveContent() {
         return common.isArchiveContent;
     }
         
-    File getArchiveContentDir() {
+    public File getArchiveContentDir() {
         return common.archiveContentDir;
     }
         
-    boolean isArchivePages() {
+    public boolean isArchivePages() {
         return common.isArchivePages;
     }
         
-    File getArchivePagesDir() {
+    public File getArchivePagesDir() {
         return common.archivePagesDir;
     }
     
     void initDefault() {
         common.initDefault();
-        timer.initDefault();
+        timerManager.initDefault();
     }
     
     void initSettings() throws IOException, Exception {
@@ -172,7 +172,7 @@ public class SettingsManager {
         }
     }
     
-    void readFile() throws IOException, Exception { //FileNotFoundException
+    void readFile() throws IOException, Exception {
         try {
             if (settinsFile.exists()) {
                 SAXReader reader = new SAXReader();
@@ -181,7 +181,7 @@ public class SettingsManager {
                     Document document = reader.read(inStream);
                     Element root = document.getRootElement();
                     common.readFromXML(root);
-                    timer.readFromXML(root);
+                    timerManager.readFromXML(root);
                     sites.readFromXML(root);
                     profiles.readFromXML(root);
                 }
@@ -197,7 +197,7 @@ public class SettingsManager {
         Document document = DocumentHelper.createDocument();
         Element root = document.addElement("Root");
         common.writeToXML(root);
-        timer.writeToXML(root);
+        timerManager.writeToXML(root);
         sites.writeToXML(root);
         profiles.writeToXML(root);
         settinsFile.createNewFile();

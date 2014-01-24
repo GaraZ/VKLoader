@@ -43,7 +43,7 @@ public class MainForm extends javax.swing.JFrame {
     private static Logger logger = LogManager.getLogger(App.class.getName());
     private static SitesArrayList sitesList;
     private static ProfilesArrayList profilesList;
-    private static Timer timer;
+    private static TimerManager timerManager;
     private static SettingsManager settingsManager;
     private static FileManager fileManager;
     private static SiteManager siteManager;
@@ -51,17 +51,17 @@ public class MainForm extends javax.swing.JFrame {
     private static SettingsForm settingsForm;
     private static TokenForm tokenForm;
     
-    public MainForm(SitesArrayList sitesList, ProfilesArrayList profilesList, Timer timer, 
-            SettingsManager settingsManager, FileManager fileManager,
-            SiteManager siteManager, VkManager vkManager) {
+    public MainForm(SitesArrayList sitesList, ProfilesArrayList profilesList, 
+            TimerManager timerManager, SettingsManager settingsManager, 
+            FileManager fileManager, SiteManager siteManager, VkManager vkManager) {
         this.sitesList = sitesList;
         this.profilesList = profilesList;
-        this.timer = timer;
+        this.timerManager = timerManager;
         this.settingsManager = settingsManager;
         this.fileManager = fileManager;
         this.siteManager = siteManager;
         this.vkManager = vkManager;
-        settingsForm = new SettingsForm(sitesList, timer, settingsManager, this);
+        settingsForm = new SettingsForm(sitesList, timerManager, settingsManager, this);
         tokenForm = new TokenForm();
         initComponents();
         pack();
@@ -81,8 +81,7 @@ public class MainForm extends javax.swing.JFrame {
                 jLabelSuccessful.setVisible(false);
                 try {
                     if (file.isFile()) {
-                        jCanvas.setImage(file);
-                        jCanvas.paintComponent(jCanvas.getGraphics());         
+                        jCanvas.setImage(file);       
                     }
                 } catch (IOException e) {
                     try {
@@ -144,7 +143,7 @@ public class MainForm extends javax.swing.JFrame {
         }
     }
        
-    JTree getTreeSites() {
+    public JTree getTreeSites() {
         return jTreeSites;
     }
         
@@ -504,11 +503,11 @@ public class MainForm extends javax.swing.JFrame {
         jComboBoxLogin.setModel(model);
     }
     
-    JLabel getTimeLabel() {
+    public JLabel getTimeLabel() {
         return jLabelTime;
     }
     
-    JButton getJButtonUpload() {
+    public JButton getJButtonUpload() {
         return jButtonUpload;
     }
     
@@ -985,9 +984,9 @@ public class MainForm extends javax.swing.JFrame {
     
     void runTimer() {
         if (jToggleButtonTimer.isSelected()) {
-            timer.start(this);
+            timerManager.start(this);
         } else {
-            timer.stop();
+            timerManager.stop();
         }
     }
     

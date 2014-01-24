@@ -17,12 +17,14 @@ public class JCanvas extends javax.swing.JPanel {
         return image;
     }
 
-    void setImage(Image aImage) {
+    public void setImage(Image aImage) {
         image = aImage;
+        repaint();
     }
     
-    void setImage(File file) throws IOException {
+    public void setImage(File file) throws IOException {
         image = ImageIO.read(file);
+        repaint();
     }
     
     @Override
