@@ -212,7 +212,7 @@ public class SiteManager {
         return charset;
     }
 
-    void runSitesDownload(XmlList<SiteObj> sitesList) throws IOException, InterruptedException {
+    void runSitesDownload(List<SiteObj> sitesList) throws IOException, InterruptedException {
         dExcLogForm.clean();
         dExcLogForm.setVisible(true);
         PoolingHttpClientConnectionManager manager = new PoolingHttpClientConnectionManager();

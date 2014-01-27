@@ -32,6 +32,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
+import javax.xml.bind.JAXBException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -41,27 +42,21 @@ import org.apache.logging.log4j.Logger;
  */
 public class MainForm extends javax.swing.JFrame {
     private static Logger logger = LogManager.getLogger(App.class.getName());
-    private static SitesArrayList sitesList;
-    private static ProfilesArrayList profilesList;
-    private static TimerManager timerManager;
+    private static List<SiteObj> sitesList;
+    private static List<ProfileObj> profilesList;
     private static SettingsManager settingsManager;
     private static FileManager fileManager;
     private static SiteManager siteManager;
     private static VkManager vkManager;
     private static SettingsForm settingsForm;
     private static TokenForm tokenForm;
+    private static TimerManager timerManager;
     
-    public MainForm(SitesArrayList sitesList, ProfilesArrayList profilesList, 
-            TimerManager timerManager, SettingsManager settingsManager, 
-            FileManager fileManager, SiteManager siteManager, VkManager vkManager) {
-        this.sitesList = sitesList;
-        this.profilesList = profilesList;
-        this.timerManager = timerManager;
-        this.settingsManager = settingsManager;
+    public MainForm(FileManager fileManager, 
+            SiteManager siteManager, VkManager vkManager) {
         this.fileManager = fileManager;
         this.siteManager = siteManager;
         this.vkManager = vkManager;
-        settingsForm = new SettingsForm(sitesList, timerManager, settingsManager, this);
         tokenForm = new TokenForm();
         initComponents();
         pack();
@@ -97,9 +92,9 @@ public class MainForm extends javax.swing.JFrame {
     }
     
     class Download  implements Runnable {
-        private final XmlList<SiteObj> sitesList;
+        private final List<SiteObj> sitesList;
         
-        public Download(XmlList<SiteObj> sitesList) {
+        public Download(List<SiteObj> sitesList) {
             this.sitesList = sitesList;
         }
         
@@ -209,6 +204,7 @@ public class MainForm extends javax.swing.JFrame {
                 connectAction(evt);
             }
         };
+        
         JLabel jLabelLogin = new JLabel("Login");
         jComboBoxLogin = new JComboBox();
         jComboBoxLogin.setEditable(true);
@@ -551,19 +547,32 @@ public class MainForm extends javax.swing.JFrame {
 
     void initSettings() {
         try {
-            try {
-                settingsManager.initSettings();
-            } catch(Exception ex) {
+            settingsManager = SettingsManager.readSetting();
+        } catch(JAXBException ex) {
+                settingsManager = new SettingsManager();
+                settingsManager.initDefault();
                 logger.error(ex);
                 JOptionPane.showMessageDialog(this, 
                         ex.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
+            try {
+                settingsManager.writeSetting();
+            } catch(JAXBException e) {
+                logger.error(e);
+                JOptionPane.showMessageDialog(this, 
+                        e.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
             }
-            initProfiles(profilesList);
+        }
+        sitesList = settingsManager.getSitesList();
+        profilesList = settingsManager.getProfilesList();
+        settingsForm = new SettingsForm(sitesList, 
+                settingsManager, this);
+        timerManager = new TimerManager(settingsManager, this);
+        initProfiles(profilesList);
+        try {
             initTree(jTreeSites, "Root", sitesList); 
             initTreeFiles();
         } catch(IOException e) {
             logger.error(e);
-            settingsManager.initDefault();
             JOptionPane.showMessageDialog(this, 
                     e.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE
             );
@@ -580,7 +589,7 @@ public class MainForm extends javax.swing.JFrame {
         return treeNode;
     }
     
-    void addSite(JTree jTreeSites, JTextField jTextField, XmlList sitesList) {
+    void addSite(JTree jTreeSites, JTextField jTextField, List<SiteObj> sitesList) {
         String text = jTextField.getText().trim();
         if (text.isEmpty()) return;
         try {    
@@ -645,14 +654,14 @@ public class MainForm extends javax.swing.JFrame {
         return list;
     }
     
-    void delSite(JTree jTree, XmlList sitesList) {
+    void delSite(JTree jTree, List<SiteObj> sitesList) {
         DefaultMutableTreeNode node = removeTreeNode(jTree);
         if (node != null) {
             sitesList.remove(node.getUserObject());
         }
     }
     
-    void download(XmlList<SiteObj> sitesList, JToggleButton jToggleButton) {
+    void download(List<SiteObj> sitesList, JToggleButton jToggleButton) {
         siteManager.clean();
         jToggleButtonDownload.setSelected(true);
         Thread thrDownload = 
@@ -692,7 +701,7 @@ public class MainForm extends javax.swing.JFrame {
         }
         try {
             settingsManager.writeSetting();
-        } catch(Exception e) {
+        } catch(JAXBException e) {
             logger.error(e);
             JOptionPane.showMessageDialog(this, 
                     "Settings were not saved. ".concat(e.getMessage()), 
@@ -713,7 +722,7 @@ public class MainForm extends javax.swing.JFrame {
         }
         try {
             settingsManager.writeSetting();
-        } catch(Exception e) {
+        } catch(JAXBException e) {
             logger.error(e);
             JOptionPane.showMessageDialog(this, 
                     "Settings were not saved.", "Error!", 
@@ -973,7 +982,7 @@ public class MainForm extends javax.swing.JFrame {
         }
         try {
             settingsManager.writeSetting();
-        } catch(Exception e) {
+        } catch(JAXBException e) {
             logger.error(e);
             JOptionPane.showMessageDialog(this, 
                    "Profiles were not saved. ".concat(e.getMessage()), "Error!",
@@ -984,7 +993,8 @@ public class MainForm extends javax.swing.JFrame {
     
     void runTimer() {
         if (jToggleButtonTimer.isSelected()) {
-            timerManager.start(this);
+            jLabelTime.setText("0");
+            timerManager.start();
         } else {
             timerManager.stop();
         }

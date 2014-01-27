@@ -30,7 +30,7 @@ public class FileManager {
         for (File file : arrDir) { 
             if (file.isFile()) {
                 int length = MASKS.length;
-                String name = file.getName().toLowerCase();
+                String name = file.getName().toLowerCase(Locale.getDefault());
                 for (int i = 0; i < length; i++) {                     
                     if (name.endsWith(MASKS[i])) {
                         filesList.add(file);
@@ -132,8 +132,8 @@ public class FileManager {
             if (i > 0) {
                 extension = entry.getKey().toString().substring(i);
             }
-            File file = new File(dir, 
-                    String.valueOf(Math.abs(entry.getKey().hashCode())).concat(extension));
+            String name = String.valueOf(Math.abs(entry.getKey().hashCode())).concat(extension);
+            File file = new File(dir, name);
             write(file, entry.getValue());
         }
     }

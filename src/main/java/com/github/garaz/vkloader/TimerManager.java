@@ -1,107 +1,86 @@
 package com.github.garaz.vkloader;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.Random;
-import org.dom4j.Element;
+import javax.swing.Timer;
 
 /**
  *
  * @author GaraZ
  */
-class TimerManager implements Runnable{
-    private String period;
-    private String timeError;
-    private Thread thrTimer;
-    private MainForm mainForm;
-    final int DEF_PERIOD_SECONDS = 600;
-    final int DEF_TIME_ERROR_SECONDS = 0;
+public class TimerManager {
     
-    public void setPeriod(int seconds) {
-        period = String.valueOf(seconds);
-    }
+    private static SettingsManager settingsManager;
+    private static MainForm mainForm;
+    private Timer timerLabelShow, timerUpload;
+    private int counter = 0;
+    private int total = 0;   
     
-    public void setTimeError(int seconds) {
-        timeError = String.valueOf(seconds);
-    }
-    
-    public int getPeriod() throws NumberFormatException {
-        return Integer.parseInt(period);
-    }
-    
-    public int getTimeError() throws NumberFormatException {
-        return Integer.parseInt(timeError);
-    }
-        
-    void initDefault() {
-        period = String.valueOf(DEF_PERIOD_SECONDS);
-        timeError = String.valueOf(DEF_TIME_ERROR_SECONDS);
-    }
-    
-    TimerManager readFromXML(Element locRoot) {
-        period = locRoot.selectSingleNode("Timer/Period").valueOf("text()");
-        timeError = locRoot.selectSingleNode("Timer/TimeError").valueOf("text()");
-        return this;
-    }
-        
-    void writeToXML(Element locRoot) {
-        Element element = locRoot.addElement("Timer");
-        element.addElement("Period").setText(period);
-        element.addElement("TimeError").setText(timeError);
-    }
-    
-    public void setForm(MainForm mainForm) {
+    public TimerManager(SettingsManager settingsManager, MainForm mainForm) {
+        this.settingsManager = settingsManager;
         this.mainForm = mainForm;
+        init();
     }
-
-    @Override
-    public void run() {
-        int per = Integer.parseInt(period);
-        int err = Integer.parseInt(timeError);
-        Random generator = new Random();
-        int a;
-        if (err > 0) {
-             a = per + err - generator.nextInt(err * 2);
-        } else {
-            a = per;
-        }
-        try {
-            for(int i = 0; ; i++) {
-                if (i >= a) {
-                    if (err > 0) {
-                        a = per + err - generator.nextInt(err * 2);
-                    } else {
-                        a = per;
-                    }
-                    if (mainForm.getJButtonUpload().isEnabled()) {
-                        mainForm.uploadContent();
-                    }
-                    i = 0;
-                }
+    
+    final void init() {
+        ActionListener taskLabelShow = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                counter++;
                 String text = new StringBuilder()
-                        .append(String.valueOf(i))
+                        .append(String.valueOf(counter))
                         .append("/")
-                        .append(String.valueOf(a))
+                        .append(String.valueOf(total))
                         .toString();
                 mainForm.getTimeLabel().setText(text);
-                Thread.sleep(1000);
-                i++;
-            }          
-        } catch (InterruptedException e) {
-            mainForm.getTimeLabel().setText("0");
-            Thread.currentThread().interrupt();
+            }
+        };
+        
+        ActionListener taskUpload = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                upload();
+            }
+        };
+        
+        timerLabelShow = new Timer(1000,taskLabelShow);
+        timerUpload = new Timer(total,taskUpload);
+    }
+    
+    void upload() {
+        findTotal();
+        timerUpload.setDelay(total);
+        counter = 0;
+        if (mainForm.getJButtonUpload().isEnabled()) {
+            mainForm.uploadContent();
+        }
+        timerLabelShow.restart();
+        timerUpload.restart();
+    } 
+    
+    void findTotal() {
+        int per = settingsManager.getPeriod();
+        int err = settingsManager.getTimeError();
+        Random generator = new Random();
+        if (err > 0) {
+            total = per + err - generator.nextInt(err * 2) * 1000;
+        } else {
+            total = per * 1000;
         }
     }
     
-    void start(MainForm mainForm) {
-        if (this.mainForm == null) {
-            this.mainForm = mainForm;
-        }
-        thrTimer = new Thread(this);
-        thrTimer.setDaemon(true);
-        thrTimer.start();
+    void start() {
+        counter = 0;
+        findTotal();
+        timerUpload.setDelay(total);
+        timerLabelShow.start();
+        timerUpload.start();
     }
     
     void stop() {
-        thrTimer.interrupt();
+        counter = 0;
+        timerLabelShow.stop();
+        timerUpload.stop();
     }
 }
-

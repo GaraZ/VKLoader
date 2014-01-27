@@ -11,6 +11,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -28,6 +29,7 @@ import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
+import javax.xml.bind.JAXBException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,11 +39,10 @@ import org.apache.logging.log4j.Logger;
  */
 public class SettingsForm extends javax.swing.JDialog {
     private static Logger logger = LogManager.getLogger(App.class.getName());
-    private static SettingsManager settingsManager;
-    private static TimerManager timerManager;
-    private static SitesArrayList sitesList;
-    private static MainForm mainForm;
-    private XmlList siteList;
+    private SettingsManager settingsManager;
+    private List<SiteObj> sitesList;
+    private MainForm mainForm;
+    private List<SiteObj> siteList;
     
     private class SitesTreeCellRenderer extends DefaultTreeCellRenderer {
         @Override
@@ -90,9 +91,8 @@ public class SettingsForm extends javax.swing.JDialog {
         }
     }
     
-    public SettingsForm(SitesArrayList sitesList, TimerManager timerManager, 
+    public SettingsForm(List<SiteObj> sitesList, 
             SettingsManager settingsManager, MainForm mainForm) {
-        this.timerManager = timerManager;
         this.sitesList = sitesList;
         this.settingsManager = settingsManager;
         this.mainForm = mainForm;
@@ -104,7 +104,8 @@ public class SettingsForm extends javax.swing.JDialog {
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent evt) {
-                SettingFormShown();
+                initSettings();
+                pack();
             }
         });
     }
@@ -420,22 +421,22 @@ public class SettingsForm extends javax.swing.JDialog {
     
     void initTimer() throws IOException {
         try {
-            jSliderPeriod.setValue(timerManager.getPeriod()/60);
-            jSliderTimeError.setValue(timerManager.getTimeError()/60);
+            jSliderPeriod.setValue(settingsManager.getPeriod());
+            jSliderTimeError.setValue(settingsManager.getTimeError());
         } catch(NumberFormatException e) {
-            jSliderPeriod.setValue(timerManager.DEF_PERIOD_SECONDS);
-            jSliderTimeError.setValue(timerManager.DEF_TIME_ERROR_SECONDS);
+            jSliderPeriod.setValue(SettingsManager.DEF_PERIOD_SECONDS);
+            jSliderTimeError.setValue(SettingsManager.DEF_TIME_ERROR_SECONDS);
             throw new IOException("Timer is incorrect.");
         }
     }
     
     void saveTimer() {
-        timerManager.setPeriod(jSliderPeriod.getValue() * 60);
-        timerManager.setTimeError(jSliderTimeError.getValue() * 60);
+        settingsManager.setPeriod(jSliderPeriod.getValue());
+        settingsManager.setTimeError(jSliderTimeError.getValue());
     }
     
     void initSites() {
-        siteList = new SitesArrayList();
+        siteList = new ArrayList();
         siteList.addAll(sitesList);
         mainForm.initTree(jTreeSites, "Root", siteList);
         mainForm.initTree(jTreeSitesMasks, "Root", new ArrayList());
@@ -475,17 +476,12 @@ public class SettingsForm extends javax.swing.JDialog {
         try {
             saveCommon();
             settingsManager.writeSetting();
-        } catch(Exception e) {
+        } catch(IOException | JAXBException e) {
             logger.error(e);
             JOptionPane.showMessageDialog(this, 
                 e.getMessage().concat("Settings were not saved."), "Error!", JOptionPane.ERROR_MESSAGE);
         }
-        mainForm.initSettings();
-    }
-    
-    void SettingFormShown() {
-        initSettings();
-        pack();
+        //mainForm.initSettings();
     }
     
     void addMask(JTree jTree, JTextField jTextField) {

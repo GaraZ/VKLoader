@@ -49,7 +49,7 @@ public final class TokenForm extends javax.swing.JDialog {
         });
     }
     
-    class LinkMouseListener extends MouseAdapter{
+    static class LinkMouseListener extends MouseAdapter{
         @Override
         public void mouseEntered(MouseEvent e) {
             if(!(e.getSource() instanceof JLabel)){
@@ -158,7 +158,7 @@ public final class TokenForm extends javax.swing.JDialog {
     
     void parseToken() {
         String answer = jTextAreaAnswer.getText();
-        if (jTextAreaAnswer == null) return;
+        if (answer == null) return;
         int pos = answer.indexOf("access_token");
         token = null;
         if (pos != -1) {

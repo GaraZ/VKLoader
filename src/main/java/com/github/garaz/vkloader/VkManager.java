@@ -175,7 +175,8 @@ public class VkManager {
             String answer = getWallUploadServer(httpClient, groupId);
             Map map = uploadContent(httpClient, answer, file);
             answer = putToServer(httpClient, map, groupId);
-            return putToWall(httpClient, answer, groupId, message);
+            answer = putToWall(httpClient, answer, groupId, message);
+            return answer;
         }
     }
 }

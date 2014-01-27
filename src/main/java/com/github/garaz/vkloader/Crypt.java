@@ -14,13 +14,14 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.annotation.adapters.XmlAdapter;
 import org.apache.commons.codec.binary.Base64;
 
 /**
  *
  * @author GaraZ
  */
-public class Crypt {
+public class Crypt extends XmlAdapter<String, String>{
     private static final String ALGORITHM = "AES"; 
     private static final  String ENCODING = "UTF-8";
 
@@ -69,5 +70,15 @@ public class Crypt {
         byte[] bytes = Base64.decodeBase64(source);
         bytes = crypter(bytes, Cipher.DECRYPT_MODE, generateKeyFromMAC());
         return new String(bytes,ENCODING);
+    }
+
+    @Override
+    public String unmarshal(String v) throws Exception {
+        return dencrypt(v);
+    }
+
+    @Override
+    public String marshal(String v) throws Exception {
+        return encrypt(v);
     }
 }

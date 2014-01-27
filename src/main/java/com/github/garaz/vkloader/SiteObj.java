@@ -4,6 +4,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
 import org.dom4j.Element;
 import org.dom4j.Node;
 
@@ -12,7 +14,9 @@ import org.dom4j.Node;
  * @author GaraZ
  */
 public class SiteObj {
+    @XmlElement
     private URI uri;
+    @XmlElement
     private List<String> masks;
         
     public SiteObj() {
