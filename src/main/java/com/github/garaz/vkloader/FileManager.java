@@ -42,25 +42,8 @@ public class FileManager {
     }
     
     public List<File> getHarmonizeSelFiles() {
-        ListIterator<File> iterSel = selFilesList.listIterator();
-        ListIterator<File> iter = filesList.listIterator();
-        boolean match = false;
-        while(iterSel.hasNext()) {
-            File fileSel = iterSel.next();
-            while(iter.hasNext()) {
-                match = false;
-                File file = iter.next();
-                if (fileSel.equals(file)) {
-                    match =true;
-                    break;
-                }
-            }
-            if (match) {
-                iter.remove();
-            } else {
-                iterSel.remove();
-            }
-        }
+        selFilesList.retainAll(filesList);
+        filesList.removeAll(selFilesList);
         return selFilesList;
     }
     
