@@ -4,6 +4,7 @@ import javax.swing.GroupLayout;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 /**
  *
@@ -40,12 +41,20 @@ public class ExceptionLoggerForm extends javax.swing.JDialog {
     }
     
     void clean() {
-        jTextArea.setText(null);
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                jTextArea.setText(null);
+            }
+        });
     }
     
-    synchronized void put(String string) {
-        jTextArea.append(string);
-        jTextArea.append(System.getProperty("line.separator"));
+    void put(final String string) {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                jTextArea.append(string);
+                jTextArea.append(System.getProperty("line.separator"));
+            }
+        });
     }
     
     JTextArea jTextArea;

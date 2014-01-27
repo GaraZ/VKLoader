@@ -44,8 +44,8 @@ public class TimerManager {
             }
         };
         
-        timerLabelShow = new Timer(1000,taskLabelShow);
-        timerUpload = new Timer(total,taskUpload);
+        timerLabelShow = new Timer(1000, taskLabelShow);
+        timerUpload = new Timer(total, taskUpload);
     }
     
     void upload() {
@@ -55,25 +55,26 @@ public class TimerManager {
         if (mainForm.getJButtonUpload().isEnabled()) {
             mainForm.uploadContent();
         }
-        timerLabelShow.restart();
-        timerUpload.restart();
     } 
     
     void findTotal() {
         int per = settingsManager.getPeriod();
         int err = settingsManager.getTimeError();
         Random generator = new Random();
-        if (err > 0) {
-            total = per + err - generator.nextInt(err * 2) * 1000;
+        if (err != 0) {
+            total = (per + err - generator.nextInt(err * 2)) * 60 * 1000;
         } else {
-            total = per * 1000;
+            total = per * 60 * 1000;
+        }
+        if (total < 0) {
+            total = 0;
         }
     }
     
     void start() {
         counter = 0;
         findTotal();
-        timerUpload.setDelay(total);
+        timerUpload.setInitialDelay(total);
         timerLabelShow.start();
         timerUpload.start();
     }

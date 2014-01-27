@@ -4,10 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
-import org.dom4j.Element;
-import org.dom4j.Node;
 
 /**
  *
@@ -43,25 +40,6 @@ public class SiteObj {
         
     public List<String> getMasks() {
         return masks;
-    }
-    
-    SiteObj readFromXML(Element locRoot) throws URISyntaxException {
-        uri = SiteManager.verifyUrl(locRoot.valueOf("@URI"));
-        masks = new ArrayList();
-        List<Node> list  = locRoot.selectNodes("Mask");
-        for(Node node: list) {
-            masks.add(node.getText());
-        }
-        return this;
-    }
-    
-    void writeToXML(Element locRoot) {
-        Element element = locRoot.addElement("Site").addAttribute("URI", uri.toString());
-        int size = masks.size();
-        for(int i = 0; i < size; i++ ) {
-            Element mask = element.addElement("Mask");
-            mask.addText(masks.get(i));
-        }
     }
     
     @Override

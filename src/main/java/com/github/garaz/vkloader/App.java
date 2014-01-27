@@ -1,9 +1,5 @@
 package com.github.garaz.vkloader;
 
-import java.util.ArrayList;
-import java.util.List;
-
-
 /**
  *
  * @author GaraZ

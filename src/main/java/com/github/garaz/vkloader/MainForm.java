@@ -28,6 +28,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.JTree;
+import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
@@ -91,50 +92,51 @@ public class MainForm extends javax.swing.JFrame {
         }
     }
     
-    class Download  implements Runnable {
+    class Download implements Runnable {
         private final List<SiteObj> sitesList;
+        private Runnable runnable;
         
         public Download(List<SiteObj> sitesList) {
             this.sitesList = sitesList;
+            runnable = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        fileManager.saveImages(siteManager.getImages(),
+                                settingsManager.getContentDir().getAbsolutePath());
+                        if (settingsManager.isArchivePages()) {
+                            fileManager.savePages(siteManager.getPages(),
+                                settingsManager.getArchivePagesDir().getAbsolutePath());
+                        }
+                    } catch (IOException ex) {
+                        logger.error(ex);
+                        JOptionPane.showMessageDialog(MainForm.this, 
+                                "Images not saving", "Error!", JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        try {
+                            jToggleButtonDownload.setText("Download");
+                            initTreeFiles();
+                        } catch (IOException ex) {
+                            logger.error(ex);
+                            JOptionPane.showMessageDialog(MainForm.this, 
+                                    ex.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
+                        }
+                        jToggleButtonDownload.setSelected(false);
+                    }
+                }
+            };
         }
         
         @Override
         public void run() {
+                
             try {
-                siteManager.runSitesDownload(sitesList);
-                if (settingsManager.isArchivePages()) {
-                    try {
-                        fileManager.savePages(siteManager.getPages(),
-                                settingsManager.getArchivePagesDir().getAbsolutePath());
-                    } catch (IOException ex) {
-                        logger.error(ex);
-                        JOptionPane.showMessageDialog(MainForm.this, 
-                                "Pages not saving", "Error!", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-                try {
-                    fileManager.saveImages(siteManager.getImages(),
-                            settingsManager.getContentDir().getAbsolutePath());
-                } catch (IOException ex) {
-                    logger.error(ex);
-                    JOptionPane.showMessageDialog(MainForm.this, 
-                            "Images not saving", "Error!", JOptionPane.ERROR_MESSAGE);
-                }
+                siteManager.runSitesDownload(sitesList, runnable);
             } catch (IOException | InterruptedException e) {
                 logger.error(e);
                 JOptionPane.showMessageDialog(MainForm.this, 
                         "Downloading error", "Error!", JOptionPane.ERROR_MESSAGE);
-            } finally {
-                try {
-                    jToggleButtonDownload.setText("Download");
-                    initTreeFiles();
-                } catch (IOException ex) {
-                    logger.error(ex);
-                    JOptionPane.showMessageDialog(MainForm.this, 
-                            ex.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
-                }
-                jToggleButtonDownload.setSelected(false);
-            }
+            } 
         }
     }
        
@@ -221,7 +223,7 @@ public class MainForm extends javax.swing.JFrame {
         jToggleButtonTimer.setText("Timer");
         jToggleButtonTimer.addActionListener(actionListener);
         jLabelTime = new JLabel();
-        jLabelTime.setText("0");
+        jLabelTime.setText("0/0");
         jLabelSuccessful = new JLabel("Upload is successful");
         jLabelSuccessful.setForeground(Color.red);
         jLabelSuccessful.setVisible(false);
@@ -664,10 +666,8 @@ public class MainForm extends javax.swing.JFrame {
     void download(List<SiteObj> sitesList, JToggleButton jToggleButton) {
         siteManager.clean();
         jToggleButtonDownload.setSelected(true);
-        Thread thrDownload = 
-            new Thread(new Download(sitesList));
-        thrDownload.setDaemon(true);
-        thrDownload.start();
+        SwingUtilities.invokeLater (new Download(sitesList));
+        
     }
     
     void downloadSites() {
@@ -993,7 +993,7 @@ public class MainForm extends javax.swing.JFrame {
     
     void runTimer() {
         if (jToggleButtonTimer.isSelected()) {
-            jLabelTime.setText("0");
+            jLabelTime.setText("0/0");
             timerManager.start();
         } else {
             timerManager.stop();

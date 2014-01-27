@@ -174,8 +174,8 @@ public class SettingsManager {
         if (!DEF_ARCHIVE_PAGES_DIR.exists()) {
            DEF_ARCHIVE_PAGES_DIR.mkdirs();
         }
-        period = String.valueOf(DEF_PERIOD_SECONDS);
-        timeError = String.valueOf(DEF_TIME_ERROR_SECONDS);
+        period = String.valueOf(DEF_PERIOD_SECONDS / 60) ;
+        timeError = String.valueOf(DEF_TIME_ERROR_SECONDS / 60);
     }
     
     static SettingsManager readSetting() throws JAXBException {

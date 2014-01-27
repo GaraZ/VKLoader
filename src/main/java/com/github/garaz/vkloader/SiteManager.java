@@ -10,6 +10,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import javax.swing.SwingUtilities;
 import org.apache.commons.validator.UrlValidator;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -17,7 +22,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 import org.htmlcleaner.CleanerProperties;
 import org.htmlcleaner.HtmlCleaner;
@@ -28,27 +32,28 @@ import org.htmlcleaner.TagNode;
  * @author GaraZ
  */
 public class SiteManager {
-    private static App app;
     private static Map<URI, byte[]> pageMap;
     private static Map<URI, byte[]> imgMap;
     private static List<Exception> exList;
-    private final ThreadGroup threadGroup;
     private static ExceptionLoggerForm dExcLogForm;
+    private ExecutorService executor;
     
-    static class GetThread extends Thread {
+    static class ParsePage implements Runnable {
         private final CloseableHttpClient httpClient;
         private final HttpGet httpget;
         private final HtmlCleaner cleaner;
         private final List<String> pageMasks;
+        private final CyclicBarrier barrier;
+        private final Runnable runnable;
         
-        public GetThread(ThreadGroup group, String title, CloseableHttpClient httpClient, 
-                HttpGet httpget, App app, List<String> pageMasks) {
-            super(group, title);
-            setDaemon(true);
-            this.httpClient = httpClient;
-            this.httpget = httpget;
+        public ParsePage(URI uri, List<String> pageMasks,
+                CyclicBarrier barrier, Runnable runnable) {
+            this.httpClient = HttpClients.createDefault();
+            this.httpget = new HttpGet(uri);
             this.pageMasks = pageMasks;
             this.cleaner = new HtmlCleaner();
+            this.barrier = barrier;
+            this.runnable = runnable;
             CleanerProperties props = cleaner.getProperties();
             props.setTranslateSpecialEntities(true);
             props.setTransResCharsToNCR(true);
@@ -59,9 +64,11 @@ public class SiteManager {
         public void run() {
             try {
                 parse(httpClient, httpget, cleaner, pageMasks);
-            } catch (IOException e) {
+                barrier.await();
+            } catch (InterruptedException | BrokenBarrierException | IOException e) {
                 dExcLogForm.put(e.getMessage());
                 exList.add(e);
+                SwingUtilities.invokeLater(runnable);
             }
         }
     }
@@ -70,7 +77,6 @@ public class SiteManager {
         pageMap = Collections.synchronizedMap(new HashMap());
         imgMap = Collections.synchronizedMap(new HashMap());
         exList = Collections.synchronizedList(new ArrayList());
-        threadGroup = new ThreadGroup("UK_GROUP");
         dExcLogForm = new ExceptionLoggerForm();
     }
     
@@ -212,26 +218,20 @@ public class SiteManager {
         return charset;
     }
 
-    void runSitesDownload(List<SiteObj> sitesList) throws IOException, InterruptedException {
+    void runSitesDownload(List<SiteObj> sitesList, Runnable runnable) throws 
+            IOException, InterruptedException {
         dExcLogForm.clean();
         dExcLogForm.setVisible(true);
-        PoolingHttpClientConnectionManager manager = new PoolingHttpClientConnectionManager();
-        try (CloseableHttpClient httpClient = HttpClients.custom()
-                .setConnectionManager(manager).build()) {
-            int size = sitesList.size();
-            SiteManager.GetThread[] threads = new SiteManager.GetThread[size];
-            for (int i = 0; i < threads.length; i++) {
-                HttpGet httpget = new HttpGet(sitesList.get(i).getURI());
-                threads[i] = new SiteManager.GetThread(threadGroup, String.valueOf(i), httpClient, 
-                        httpget, app, sitesList.get(i).getMasks());
-            }
-            for (int j = 0; j < size; j++) {
-                threads[j].start();
-            }
-            for (int j = 0; j < size; j++) {
-                threads[j].join();
-            }
+        CyclicBarrier barrier = new CyclicBarrier(sitesList.size(), runnable);
+        int size = sitesList.size();
+        executor = Executors.newFixedThreadPool(size);
+        for (int i = 0; i < size; i++) {
+            Runnable worker = new ParsePage( 
+                   sitesList.get(i).getURI(), sitesList.get(i).getMasks(), 
+                    barrier, runnable);
+            executor.submit(worker);
         }
+        executor.shutdown();
     }
     
     void clean() {
@@ -241,8 +241,6 @@ public class SiteManager {
     }
     
     void stop() {
-        if (threadGroup.activeCount() != 0) {
-            threadGroup.interrupt();
-        }
+        executor.shutdownNow();
     }
 }
