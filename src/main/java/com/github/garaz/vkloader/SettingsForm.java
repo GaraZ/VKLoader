@@ -93,6 +93,7 @@ public class SettingsForm extends javax.swing.JDialog {
     
     public SettingsForm(List<SiteObj> sitesList, 
             SettingsManager settingsManager, MainForm mainForm) {
+        super(mainForm);
         this.sitesList = sitesList;
         this.settingsManager = settingsManager;
         this.mainForm = mainForm;
