@@ -10,11 +10,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.swing.SwingUtilities;
+import java.util.concurrent.Future;
+import javax.swing.JFrame;
 import org.apache.commons.validator.UrlValidator;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -23,6 +23,8 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.htmlcleaner.CleanerProperties;
 import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
@@ -32,28 +34,23 @@ import org.htmlcleaner.TagNode;
  * @author GaraZ
  */
 public class SiteManager {
-    private static Map<URI, byte[]> pageMap;
-    private static Map<URI, byte[]> imgMap;
-    private static List<Exception> exList;
-    private static ExceptionLoggerForm dExcLogForm;
+    private Logger logger = LogManager.getLogger(App.class.getName());
+    private Map<URI, byte[]> pageMap;
+    private Map<URI, byte[]> imgMap;
+    private ExceptionLoggerForm dExcLogForm;
     private ExecutorService executor;
     
-    static class ParsePage implements Runnable {
+    class ParsePage implements Runnable {
         private final CloseableHttpClient httpClient;
         private final HttpGet httpget;
         private final HtmlCleaner cleaner;
         private final List<String> pageMasks;
-        private final CyclicBarrier barrier;
-        private final Runnable runnable;
         
-        public ParsePage(URI uri, List<String> pageMasks,
-                CyclicBarrier barrier, Runnable runnable) {
+        public ParsePage(URI uri, List<String> pageMasks) {
             this.httpClient = HttpClients.createDefault();
             this.httpget = new HttpGet(uri);
             this.pageMasks = pageMasks;
             this.cleaner = new HtmlCleaner();
-            this.barrier = barrier;
-            this.runnable = runnable;
             CleanerProperties props = cleaner.getProperties();
             props.setTranslateSpecialEntities(true);
             props.setTransResCharsToNCR(true);
@@ -64,20 +61,17 @@ public class SiteManager {
         public void run() {
             try {
                 parse(httpClient, httpget, cleaner, pageMasks);
-                barrier.await();
-            } catch (InterruptedException | BrokenBarrierException | IOException e) {
+            } catch (IOException e) {
+                logger.error(e);
                 dExcLogForm.put(e.getMessage());
-                exList.add(e);
-                SwingUtilities.invokeLater(runnable);
             }
         }
     }
 
-    public SiteManager() {
+    public SiteManager(JFrame frame) {
         pageMap = Collections.synchronizedMap(new HashMap());
         imgMap = Collections.synchronizedMap(new HashMap());
-        exList = Collections.synchronizedList(new ArrayList());
-        dExcLogForm = new ExceptionLoggerForm();
+        dExcLogForm = new ExceptionLoggerForm(frame);
     }
     
     public Map<URI, byte[]> getPages() {
@@ -88,7 +82,7 @@ public class SiteManager {
         return imgMap;
     }
     
-    static Map<URI, String> parseTags(TagNode root, String elName, String atrName) {
+    Map<URI, String> parseTags(TagNode root, String elName, String atrName) {
         Map<URI, String> map = new HashMap();
         TagNode[] tagNodeArr = root.getElementsByName(elName, true);
         int length = tagNodeArr.length;
@@ -118,7 +112,7 @@ public class SiteManager {
         return false;
     }
     
-    static List<URI> getLinks(TagNode root, List<String> maskList) {
+    List<URI> getLinks(TagNode root, List<String> maskList) {
         List<URI> list = new ArrayList();
         List<URI> imgList = new ArrayList();
         imgList.addAll(parseTags(root, "img", "src").keySet());
@@ -141,11 +135,11 @@ public class SiteManager {
         return list;
     }
     
-    static void parse(CloseableHttpClient httpClient, HttpGet httpget, 
-            HtmlCleaner cleaner, List<String> maskList) throws IOException { 
+    void parse(CloseableHttpClient httpClient, HttpGet httpget, 
+            HtmlCleaner cleaner, List<String> maskList) throws IOException {
+        if (Thread.currentThread().isInterrupted()) return;
         URI uri = httpget.getURI();
         dExcLogForm.put(uri.toString());
-        if (Thread.currentThread().isInterrupted()) return;
         try (CloseableHttpResponse response = httpClient.execute(httpget)) {
             HttpEntity entity = response.getEntity();
             if (entity != null) {
@@ -154,8 +148,8 @@ public class SiteManager {
                     try {
                         imgMap.put(uri, EntityUtils.toByteArray(entity));
                     } catch (IOException e) {
+                        logger.error(e);
                         dExcLogForm.put(e.getMessage());
-                        exList.add(e);
                     }
                 } else if (contType.toLowerCase().indexOf("text")  != -1) {
                     try {
@@ -179,8 +173,8 @@ public class SiteManager {
                             }
                         }
                     } catch(IOException e) {
+                        logger.error(e);
                         dExcLogForm.put(e.getMessage());
-                        exList.add(e);
                     }
                 }                    
             }
@@ -200,7 +194,7 @@ public class SiteManager {
         return new URI(string);
     }
     
-    static String findCharset(byte[] bytes, HtmlCleaner cleaner) {
+    String findCharset(byte[] bytes, HtmlCleaner cleaner) {
         String charset = null;
         try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes)) {
             TagNode meta = cleaner.clean(bis).findElementByAttValue("http-equiv", "Content-Type", true, false);
@@ -212,32 +206,34 @@ public class SiteManager {
                 } 
             }
         } catch (IOException e) {
+            logger.error(e);
             dExcLogForm.put(e.getMessage());
-            exList.add(e);
         }
         return charset;
     }
 
-    void runSitesDownload(List<SiteObj> sitesList, Runnable runnable) throws 
-            IOException, InterruptedException {
-        dExcLogForm.clean();
-        dExcLogForm.setVisible(true);
-        CyclicBarrier barrier = new CyclicBarrier(sitesList.size(), runnable);
-        int size = sitesList.size();
-        executor = Executors.newFixedThreadPool(size);
-        for (int i = 0; i < size; i++) {
-            Runnable worker = new ParsePage( 
-                   sitesList.get(i).getURI(), sitesList.get(i).getMasks(), 
-                    barrier, runnable);
-            executor.submit(worker);
-        }
-        executor.shutdown();
-    }
-    
-    void clean() {
+    void runSitesDownload(List<SiteObj> sitesList) throws 
+            IOException, InterruptedException, ExecutionException {
         pageMap.clear();
         imgMap.clear();
-        exList.clear();
+        dExcLogForm.clean();
+        dExcLogForm.setVisible(true);
+        int size = sitesList.size();
+        executor = Executors.newFixedThreadPool(size);
+        try {
+        List<Future> futures = new ArrayList();
+        for (int i = 0; i < size; i++) {
+            Runnable worker = new ParsePage( 
+                   sitesList.get(i).getURI(), sitesList.get(i).getMasks());
+            futures.add(executor.submit(worker));
+        }
+        
+        for(Future future : futures) {
+            future.get();
+        }
+        } finally {
+           executor.shutdown(); 
+        }
     }
     
     void stop() {

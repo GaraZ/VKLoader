@@ -28,7 +28,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.JTree;
-import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
@@ -43,20 +43,19 @@ import org.apache.logging.log4j.Logger;
  */
 public class MainForm extends javax.swing.JFrame {
     private static Logger logger = LogManager.getLogger(App.class.getName());
-    private static List<SiteObj> sitesList;
-    private static List<ProfileObj> profilesList;
-    private static SettingsManager settingsManager;
-    private static FileManager fileManager;
-    private static SiteManager siteManager;
-    private static VkManager vkManager;
-    private static SettingsForm settingsForm;
-    private static TokenForm tokenForm;
-    private static TimerManager timerManager;
+    private List<SiteObj> sitesList;
+    private List<ProfileObj> profilesList;
+    private SettingsManager settingsManager;
+    private FileManager fileManager;
+    private SiteManager siteManager;
+    private VkManager vkManager;
+    private SettingsForm settingsForm;
+    private TokenForm tokenForm;
+    private TimerManager timerManager;
     
-    public MainForm(FileManager fileManager, 
-            SiteManager siteManager, VkManager vkManager) {
+    public MainForm(FileManager fileManager, VkManager vkManager) {
         this.fileManager = fileManager;
-        this.siteManager = siteManager;
+        this.siteManager = new SiteManager(this);
         this.vkManager = vkManager;
         tokenForm = new TokenForm();
         initComponents();
@@ -92,51 +91,36 @@ public class MainForm extends javax.swing.JFrame {
         }
     }
     
-    class Download implements Runnable {
+    class Download extends SwingWorker {
         private final List<SiteObj> sitesList;
-        private Runnable runnable;
         
         public Download(List<SiteObj> sitesList) {
             this.sitesList = sitesList;
-            runnable = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        fileManager.saveImages(siteManager.getImages(),
-                                settingsManager.getContentDir().getAbsolutePath());
-                        if (settingsManager.isArchivePages()) {
-                            fileManager.savePages(siteManager.getPages(),
-                                settingsManager.getArchivePagesDir().getAbsolutePath());
-                        }
-                    } catch (IOException ex) {
-                        logger.error(ex);
-                        JOptionPane.showMessageDialog(MainForm.this, 
-                                "Images not saving", "Error!", JOptionPane.ERROR_MESSAGE);
-                    } finally {
-                        try {
-                            jToggleButtonDownload.setText("Download");
-                            initTreeFiles();
-                        } catch (IOException ex) {
-                            logger.error(ex);
-                            JOptionPane.showMessageDialog(MainForm.this, 
-                                    ex.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
-                        }
-                        jToggleButtonDownload.setSelected(false);
-                    }
-                }
-            };
+        }
+
+        @Override
+        protected Object doInBackground() throws Exception {
+            siteManager.runSitesDownload(sitesList);
+            fileManager.saveImages(siteManager.getImages(),
+            settingsManager.getContentDir().getAbsolutePath());
+            if (settingsManager.isArchivePages()) {
+                fileManager.savePages(siteManager.getPages(),
+                        settingsManager.getArchivePagesDir().getAbsolutePath());
+            }
+            return null;
         }
         
         @Override
-        public void run() {
-                
+        public void done() {
+            jToggleButtonDownload.setText("Download");
+            jToggleButtonDownload.setSelected(false);
             try {
-                siteManager.runSitesDownload(sitesList, runnable);
-            } catch (IOException | InterruptedException e) {
+                initTreeFiles();
+            } catch (IOException e) {
                 logger.error(e);
                 JOptionPane.showMessageDialog(MainForm.this, 
-                        "Downloading error", "Error!", JOptionPane.ERROR_MESSAGE);
-            } 
+                        e.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
        
@@ -538,10 +522,10 @@ public class MainForm extends javax.swing.JFrame {
                 file = settingsManager.getContentDir();
             } catch(IOException e) {
                 file = settingsManager.DEF_CONTENT_DIR;
-                throw new IOException("Path of content directory is incorrect. Set default value.");
+                throw new IOException("Path of content directory is incorrect. Set default value.", e);
             }
         } finally {
-            fileManager.initContent(file);
+            fileManager.searchFilesInDir(file);
             initTree(jTreeSelFiles, file, fileManager.getHarmonizeSelFiles());
             initTree(jTreeFiles, file, fileManager.getContList());
         }      
@@ -664,23 +648,13 @@ public class MainForm extends javax.swing.JFrame {
     }
     
     void download(List<SiteObj> sitesList, JToggleButton jToggleButton) {
-        siteManager.clean();
         jToggleButtonDownload.setSelected(true);
-        SwingUtilities.invokeLater (new Download(sitesList));
-        
+        new Download(sitesList).execute();        
     }
     
     void downloadSites() {
         if (jToggleButtonDownload.isSelected()) {
             download(sitesList, jToggleButtonDownload);
-            try {
-                initTreeFiles();
-            } catch (IOException e) {
-                logger.error(e);
-                JOptionPane.showMessageDialog(this, 
-                        "Downloading error", "Error!", JOptionPane.ERROR_MESSAGE
-                );
-            }
         } else {
             jToggleButtonDownload.setText("Stop...");
             siteManager.stop();

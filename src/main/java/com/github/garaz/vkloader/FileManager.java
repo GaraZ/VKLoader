@@ -23,16 +23,15 @@ public class FileManager {
         selFilesList = new ArrayList();
     }
     
-    void initContent(File dir) {
+    void searchFilesInDir(File dir) {
         filesList.clear();
         File[] arrDir = dir.listFiles();
         if (arrDir == null) return;
         for (File file : arrDir) { 
             if (file.isFile()) {
-                int length = MASKS.length;
                 String name = file.getName().toLowerCase(Locale.getDefault());
-                for (int i = 0; i < length; i++) {                     
-                    if (name.endsWith(MASKS[i])) {
+                for (String str : MASKS) {
+                    if (name.endsWith(str)) {
                         filesList.add(file);
                         break;
                     }
@@ -55,10 +54,11 @@ public class FileManager {
         try {
             Files.delete(file.toPath());
         } catch(NoSuchFileException e) {
+            throw e;
+        } finally {
             filesList.remove(file);
-            throw new NoSuchFileException(file.getName().concat(" not found. "));
         }
-        filesList.remove(file);
+        
     }
     
     void removeAllFiles() throws IOException {
@@ -71,7 +71,7 @@ public class FileManager {
                 iter.remove();
             } catch(NoSuchFileException e) {
                 iter.remove();
-                errMessages.append(e.getMessage()).append(" not found. ");
+                errMessages.append(e.getMessage()).append(" ");
             } catch(IOException ex) {
                 errMessages.append(ex.getMessage()).append(" ");
             }
@@ -94,7 +94,7 @@ public class FileManager {
         selFilesList.remove(file);
     }
     
-    synchronized void write(File file, byte[] bytes) throws FileNotFoundException, IOException {
+    void write(File file, byte[] bytes) throws FileNotFoundException, IOException {
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(bytes);
         }

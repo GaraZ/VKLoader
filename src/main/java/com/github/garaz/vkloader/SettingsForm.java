@@ -419,14 +419,14 @@ public class SettingsForm extends javax.swing.JDialog {
         settingsManager.setArchivePages(jCheckBoxArhSite.isSelected());
     }
     
-    void initTimer() throws IOException {
+    void initTimer() throws NumberFormatException {
         try {
             jSliderPeriod.setValue(settingsManager.getPeriod());
             jSliderTimeError.setValue(settingsManager.getTimeError());
         } catch(NumberFormatException e) {
             jSliderPeriod.setValue(SettingsManager.DEF_PERIOD_SECONDS);
             jSliderTimeError.setValue(SettingsManager.DEF_TIME_ERROR_SECONDS);
-            throw new IOException("Timer is incorrect.");
+            throw e;
         }
     }
     
@@ -463,7 +463,7 @@ public class SettingsForm extends javax.swing.JDialog {
         }
         try {
             initTimer();
-        } catch(IOException e) {
+        } catch(NumberFormatException e) {
             logger.error(e);
             JOptionPane.showMessageDialog(this, 
                 e.getMessage().concat(" Set default settings."), "Error!", JOptionPane.ERROR_MESSAGE);

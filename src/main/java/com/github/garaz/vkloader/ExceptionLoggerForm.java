@@ -1,6 +1,7 @@
 package com.github.garaz.vkloader;
 
 import javax.swing.GroupLayout;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -12,7 +13,8 @@ import javax.swing.SwingUtilities;
  */
 public class ExceptionLoggerForm extends javax.swing.JDialog {
     
-    public ExceptionLoggerForm() {
+    public ExceptionLoggerForm(JFrame frame) {
+        super(frame);
         initComponents();
         pack();
         setLocationRelativeTo(null);

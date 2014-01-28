@@ -6,17 +6,16 @@ package com.github.garaz.vkloader;
  */
 public class App {
     
-    void initDependence() {
+    void start() {
         FileManager fileManager = new FileManager();
-        SiteManager siteManager = new SiteManager();
         VkManager vkManager = new VkManager();
-        MainForm mainForm = new MainForm(fileManager, siteManager, vkManager);
+        MainForm mainForm = new MainForm(fileManager, vkManager);
         mainForm.initSettings();
         mainForm.setVisible(true);
     }
 
     public static void main(String[] args) {
         App app = new App();
-        app.initDependence();
+        app.start();
     }
 }
