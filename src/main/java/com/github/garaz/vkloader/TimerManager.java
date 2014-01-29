@@ -3,6 +3,7 @@ package com.github.garaz.vkloader;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Random;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 /**
@@ -28,12 +29,17 @@ public class TimerManager {
             @Override
             public void actionPerformed(ActionEvent e) {
                 counter++;
-                String text = new StringBuilder()
+                final String text = new StringBuilder()
                         .append(String.valueOf(counter))
                         .append("/")
                         .append(String.valueOf(total))
                         .toString();
-                mainForm.getTimeLabel().setText(text);
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        mainForm.getTimeLabel().setText(text);
+                    }
+                });
+                
             }
         };
         
@@ -62,9 +68,9 @@ public class TimerManager {
         int err = settingsManager.getTimeError();
         Random generator = new Random();
         if (err != 0) {
-            total = (per + err - generator.nextInt(err * 2)) * 60 * 1000;
+            total = (per + err - generator.nextInt(err * 2)) * 60;
         } else {
-            total = per * 60 * 1000;
+            total = per * 60;
         }
         if (total < 0) {
             total = 0;
@@ -74,7 +80,7 @@ public class TimerManager {
     void start() {
         counter = 0;
         findTotal();
-        timerUpload.setInitialDelay(total);
+        timerUpload.setInitialDelay(total * 1000);
         timerLabelShow.start();
         timerUpload.start();
     }
